@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  ConvexProvider,
-  ConvexReactClient,
-  useAction,
-  useMutation,
-  useQuery,
-} from "convex/react";
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+  useAuth,
+} from "@clerk/clerk-react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -63,16 +65,108 @@ function describeError(err: unknown): string {
 type TabKey = "workflows" | "executions";
 
 export default function AppConvex(): React.ReactElement {
-  const convexUrl = useMemo(() => mustGetConvexUrl(), []);
-  const client = useMemo(() => new ConvexReactClient(convexUrl), [convexUrl]);
+  // Providers are set up in `src/main.tsx` (ClerkProvider + ConvexProviderWithClerk).
+  const convexUrl = mustGetConvexUrl();
+
   return (
-    <ConvexProvider client={client}>
-      <AppInner convexUrl={convexUrl} />
-    </ConvexProvider>
+    <>
+      <SignedOut>
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            background: "#f9fafb",
+            color: "#111827",
+            fontFamily:
+              'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 520,
+              background: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 12,
+              padding: 18,
+            }}
+          >
+            <div style={{ fontWeight: 800, fontSize: 18 }}>Agentromatic</div>
+            <div style={{ color: "#6b7280", fontSize: 13, marginTop: 6 }}>
+              Sign in to continue.
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  style={{
+                    padding: "10px 10px",
+                    borderRadius: 10,
+                    border: "1px solid #111827",
+                    background: "#111827",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    flex: "1 1 160px",
+                  }}
+                >
+                  Sign in
+                </button>
+              </SignInButton>
+
+              <SignUpButton mode="modal">
+                <button
+                  type="button"
+                  style={{
+                    padding: "10px 10px",
+                    borderRadius: 10,
+                    border: "1px solid #e5e7eb",
+                    background: "#fff",
+                    color: "#111827",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    flex: "1 1 160px",
+                  }}
+                >
+                  Sign up
+                </button>
+              </SignUpButton>
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            <div style={{ color: "#6b7280", fontSize: 12 }}>
+              Convex URL:{" "}
+              <span
+                style={{
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                  color: "#111827",
+                }}
+              >
+                {convexUrl}
+              </span>
+            </div>
+          </div>
+        </div>
+      </SignedOut>
+
+      <SignedIn>
+        <AppInner convexUrl={convexUrl} />
+      </SignedIn>
+    </>
   );
 }
 
 function AppInner(props: { convexUrl: string }): React.ReactElement {
+  const { isLoaded, isSignedIn, userId } = useAuth();
+
   const bootstrap = useMutation(api.users.bootstrap);
 
   const [bootstrappedUserId, setBootstrappedUserId] =
@@ -81,11 +175,22 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
 
   const isBootstrapped = bootstrappedUserId !== null;
 
-  // Gate queries until bootstrap succeeds (prevents early auth/user-row errors from crashing the app).
+  // Gate queries until bootstrap succeeds (prevents missing-user-row errors from crashing the app).
   const me = useQuery(api.users.me, isBootstrapped ? {} : "skip");
 
   useEffect(() => {
     let alive = true;
+
+    // If auth isn't ready yet, do nothing.
+    if (!isLoaded) return;
+
+    // If signed out, clear local bootstrap state.
+    if (!isSignedIn) {
+      setBootstrappedUserId(null);
+      setBootstrapError(null);
+      return;
+    }
+
     void (async () => {
       try {
         const res = await bootstrap({});
@@ -97,10 +202,11 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
         setBootstrapError(describeError(err));
       }
     })();
+
     return () => {
       alive = false;
     };
-  }, [bootstrap]);
+  }, [bootstrap, isLoaded, isSignedIn, userId]);
 
   const [tab, setTab] = useState<TabKey>("workflows");
 
@@ -296,6 +402,12 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
           >
             Executions
           </button>
+
+          <div
+            style={{ marginLeft: 12, display: "flex", alignItems: "center" }}
+          >
+            <UserButton />
+          </div>
         </div>
       </header>
 
@@ -316,6 +428,17 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
                 : "loading..."}
             </span>
           )}
+        </div>
+
+        <div style={styles.noticeRow}>
+          <span style={styles.noticeLabel}>Auth:</span>
+          <span style={styles.mono}>
+            {!isLoaded
+              ? "loading..."
+              : isSignedIn
+                ? `signed-in userId=${userId ?? "(unknown)"}`
+                : "signed-out"}
+          </span>
         </div>
 
         <div style={styles.noticeRow}>
@@ -593,9 +716,12 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
 
       <footer style={styles.footer}>
         <div style={styles.subtle}>
-          Notes: You may need Convex env{" "}
-          <span style={styles.mono}>AGENTROMATIC_DEV_ANON_USER=true</span> in
-          dev to allow anonymous calls.
+          Notes: This UI now expects Clerk auth. Ensure your Convex backend is
+          configured for Clerk via
+          <span style={styles.mono}> convex/auth.config.ts </span>
+          and that the Convex env var
+          <span style={styles.mono}> CLERK_JWT_ISSUER_DOMAIN </span>
+          is set for the deployment.
         </div>
       </footer>
     </div>

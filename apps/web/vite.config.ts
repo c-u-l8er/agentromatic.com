@@ -9,9 +9,12 @@ import { defineConfig, loadEnv } from "vite";
  * Goal:
  * - Convex writes `CONVEX_URL` to the repo root `.env.local`.
  * - The web app expects `VITE_CONVEX_URL` (client-exposed env var).
+ * - Clerk publishable key is stored at the repo root as `CLERK_PUBLISHABLE_KEY`,
+ *   but the client needs `VITE_CLERK_PUBLISHABLE_KEY`.
  *
  * This config loads env from the repo root and maps:
  *   CONVEX_URL -> VITE_CONVEX_URL
+ *   CLERK_PUBLISHABLE_KEY -> VITE_CLERK_PUBLISHABLE_KEY
  * for both dev and build, so you don't need to duplicate `.env.local` files.
  */
 
@@ -32,11 +35,30 @@ export default defineConfig(({ mode }) => {
     (rootEnv.CONVEX_URL || process.env.CONVEX_URL || "").trim() ||
     "";
 
+  // Prefer an explicitly-set VITE_CLERK_PUBLISHABLE_KEY; otherwise fall back to CLERK_PUBLISHABLE_KEY from root.
+  const resolvedClerkPublishableKey =
+    (
+      rootEnv.VITE_CLERK_PUBLISHABLE_KEY ||
+      process.env.VITE_CLERK_PUBLISHABLE_KEY ||
+      ""
+    ).trim() ||
+    (
+      rootEnv.CLERK_PUBLISHABLE_KEY ||
+      process.env.CLERK_PUBLISHABLE_KEY ||
+      ""
+    ).trim() ||
+    "";
+
   // Ensure Vite will expose `import.meta.env.VITE_CONVEX_URL` to the client.
   // Vite only exposes env vars with the `VITE_` prefix, but `loadEnv()` merges `process.env`,
   // so we set it here before Vite finalizes env injection.
   if (resolvedConvexUrl && !process.env.VITE_CONVEX_URL) {
     process.env.VITE_CONVEX_URL = resolvedConvexUrl;
+  }
+
+  // Ensure Vite will expose `import.meta.env.VITE_CLERK_PUBLISHABLE_KEY` to the client.
+  if (resolvedClerkPublishableKey && !process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+    process.env.VITE_CLERK_PUBLISHABLE_KEY = resolvedClerkPublishableKey;
   }
 
   if (!resolvedConvexUrl) {
@@ -50,6 +72,18 @@ export default defineConfig(({ mode }) => {
         "  - CONVEX_URL in repo root `.env.local` (written by Convex).",
         "",
         "If Convex already created it, ensure you're running `npx convex dev` once and that repo root `.env.local` exists.",
+      ].join("\n"),
+    );
+  }
+
+  if (!resolvedClerkPublishableKey) {
+    // Don't hard-fail here; Clerk integration may not be enabled yet in every environment.
+    console.warn(
+      [
+        "[agentromatic] Missing Clerk publishable key.",
+        "Expected either:",
+        "  - VITE_CLERK_PUBLISHABLE_KEY in repo root env, OR",
+        "  - CLERK_PUBLISHABLE_KEY in repo root env.",
       ].join("\n"),
     );
   }
