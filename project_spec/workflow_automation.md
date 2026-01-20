@@ -636,16 +636,19 @@ async function attemptSchemaFix(config, inputData, errorMessage) {
 - 1 credit = 1 complete workflow execution (regardless of # of steps)
 - More predictable for users
 
-**Pricing Tiers:**
+**Pricing Tiers (public site names):**
 
-**Free Plan: $0/month**
+> Note: The public website uses **Free / Pro / Business / Enterprise** naming.
+> (This spec previously used “Starter” and “Pro”; those are now mapped to **Pro** and **Business** respectively.)
+
+**Free: $0/month**
 - 100 credits/month (100 workflow executions)
 - 5 active workflows
 - 10 connected apps
 - Community support (forum)
 - **Target:** Individual users, side projects
 
-**Starter Plan: $49/month**
+**Pro: $49/month**
 - 2,000 credits/month
 - 25 active workflows
 - Unlimited connected apps
@@ -653,7 +656,7 @@ async function attemptSchemaFix(config, inputData, errorMessage) {
 - AI agent nodes included
 - **Target:** Small teams, freelancers, agencies
 
-**Pro Plan: $149/month**
+**Business: $149/month**
 - 10,000 credits/month
 - Unlimited workflows
 - Team collaboration (5 seats included)
@@ -661,7 +664,7 @@ async function attemptSchemaFix(config, inputData, errorMessage) {
 - Priority chat support
 - **Target:** Growing startups, operations teams
 
-**Enterprise Plan: Custom**
+**Enterprise: Custom**
 - Custom credit allocation (50K+/month)
 - Dedicated account manager
 - SLA (99.9% uptime guarantee)
@@ -702,6 +705,13 @@ async function attemptSchemaFix(config, inputData, errorMessage) {
 ### Phase 1: Launch (Months 1-3)
 
 **Target:** 100 beta users
+
+**Initial wedge (v1): Webhook triage → route → chat notify**
+- **Input:** inbound webhook payloads (forms, apps, internal services)
+- **Triage:** AI extracts structured fields (intent, category, urgency, summary)
+- **Routing:** deterministic rules choose the correct path (not a black box)
+- **Notify:** post to chat (Slack first; Mattermost/Discord as secondary targets)
+- **First-value promise:** <10 minutes from signup to first routed notification **with run logs** for debugging and trust
 
 **Customer Profile:**
 - Operations managers at SaaS companies (50-200 employees)

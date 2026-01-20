@@ -1,15 +1,9 @@
 import React, { useEffect, useState } from "react";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-  useAuth,
-} from "@clerk/clerk-react";
+import { SignedIn, SignedOut, UserButton, useAuth } from "@clerk/clerk-react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import MarketingHome from "./MarketingHome";
 
 function mustGetConvexUrl(): string {
   const url = (import.meta as any).env?.VITE_CONVEX_URL as string | undefined;
@@ -66,106 +60,24 @@ type TabKey = "workflows" | "executions";
 
 export default function AppConvex(): React.ReactElement {
   // Providers are set up in `src/main.tsx` (ClerkProvider + ConvexProviderWithClerk).
-  const convexUrl = mustGetConvexUrl();
 
   return (
     <>
       <SignedOut>
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-            background: "#f9fafb",
-            color: "#111827",
-            fontFamily:
-              'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 520,
-              background: "#fff",
-              border: "1px solid #e5e7eb",
-              borderRadius: 12,
-              padding: 18,
-            }}
-          >
-            <div style={{ fontWeight: 800, fontSize: 18 }}>Agentromatic</div>
-            <div style={{ color: "#6b7280", fontSize: 13, marginTop: 6 }}>
-              Sign in to continue.
-            </div>
-
-            <div style={{ height: 12 }} />
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <SignInButton mode="modal">
-                <button
-                  type="button"
-                  style={{
-                    padding: "10px 10px",
-                    borderRadius: 10,
-                    border: "1px solid #111827",
-                    background: "#111827",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontWeight: 700,
-                    flex: "1 1 160px",
-                  }}
-                >
-                  Sign in
-                </button>
-              </SignInButton>
-
-              <SignUpButton mode="modal">
-                <button
-                  type="button"
-                  style={{
-                    padding: "10px 10px",
-                    borderRadius: 10,
-                    border: "1px solid #e5e7eb",
-                    background: "#fff",
-                    color: "#111827",
-                    cursor: "pointer",
-                    fontWeight: 700,
-                    flex: "1 1 160px",
-                  }}
-                >
-                  Sign up
-                </button>
-              </SignUpButton>
-            </div>
-
-            <div style={{ height: 12 }} />
-
-            <div style={{ color: "#6b7280", fontSize: 12 }}>
-              Convex URL:{" "}
-              <span
-                style={{
-                  fontFamily:
-                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                  color: "#111827",
-                }}
-              >
-                {convexUrl}
-              </span>
-            </div>
-          </div>
-        </div>
+        <MarketingHome />
       </SignedOut>
 
       <SignedIn>
-        <AppInner convexUrl={convexUrl} />
+        <AppInner />
       </SignedIn>
     </>
   );
 }
 
-function AppInner(props: { convexUrl: string }): React.ReactElement {
+function AppInner(): React.ReactElement {
   const { isLoaded, isSignedIn, userId } = useAuth();
+
+  const convexUrl = mustGetConvexUrl();
 
   const bootstrap = useMutation(api.users.bootstrap);
 
@@ -389,7 +301,11 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
       <header style={styles.header}>
         <div>
           <div style={styles.brand}>Agentromatic</div>
-          <div style={styles.subtle}>Phase 1 UI → Convex wiring (dev only)</div>
+          {import.meta.env.DEV ? (
+            <div style={styles.subtle}>
+              Phase 1 UI → Convex wiring (dev only)
+            </div>
+          ) : null}
         </div>
 
         <div style={styles.headerRight}>
@@ -416,43 +332,45 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
         </div>
       </header>
 
-      <section style={styles.noticeBar}>
-        <div style={styles.noticeRow}>
-          <span style={styles.noticeLabel}>Convex URL:</span>
-          <span style={styles.mono}>{props.convexUrl}</span>
-        </div>
+      {import.meta.env.DEV ? (
+        <section style={styles.noticeBar}>
+          <div style={styles.noticeRow}>
+            <span style={styles.noticeLabel}>Convex URL:</span>
+            <span style={styles.mono}>{convexUrl}</span>
+          </div>
 
-        <div style={styles.noticeRow}>
-          <span style={styles.noticeLabel}>Bootstrap:</span>
-          {bootstrapError ? (
-            <pre style={{ ...styles.pre, flex: 1 }}>{bootstrapError}</pre>
-          ) : (
+          <div style={styles.noticeRow}>
+            <span style={styles.noticeLabel}>Bootstrap:</span>
+            {bootstrapError ? (
+              <pre style={{ ...styles.pre, flex: 1 }}>{bootstrapError}</pre>
+            ) : (
+              <span style={styles.mono}>
+                {bootstrappedUserId
+                  ? `OK userId=${bootstrappedUserId}`
+                  : "loading..."}
+              </span>
+            )}
+          </div>
+
+          <div style={styles.noticeRow}>
+            <span style={styles.noticeLabel}>Auth:</span>
             <span style={styles.mono}>
-              {bootstrappedUserId
-                ? `OK userId=${bootstrappedUserId}`
-                : "loading..."}
+              {!isLoaded
+                ? "loading..."
+                : isSignedIn
+                  ? `signed-in userId=${userId ?? "(unknown)"}`
+                  : "signed-out"}
             </span>
-          )}
-        </div>
+          </div>
 
-        <div style={styles.noticeRow}>
-          <span style={styles.noticeLabel}>Auth:</span>
-          <span style={styles.mono}>
-            {!isLoaded
-              ? "loading..."
-              : isSignedIn
-                ? `signed-in userId=${userId ?? "(unknown)"}`
-                : "signed-out"}
-          </span>
-        </div>
-
-        <div style={styles.noticeRow}>
-          <span style={styles.noticeLabel}>users.me:</span>
-          <pre style={{ ...styles.pre, flex: 1 }}>
-            {me === undefined ? "loading..." : safeJson(me)}
-          </pre>
-        </div>
-      </section>
+          <div style={styles.noticeRow}>
+            <span style={styles.noticeLabel}>users.me:</span>
+            <pre style={{ ...styles.pre, flex: 1 }}>
+              {me === undefined ? "loading..." : safeJson(me)}
+            </pre>
+          </div>
+        </section>
+      ) : null}
 
       <main style={styles.main}>
         <div style={styles.sidebar}>

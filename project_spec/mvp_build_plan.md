@@ -99,6 +99,7 @@ This document turns the product spec + design spec into **implementation decisio
 3. CI checks (typecheck, lint, test, formatting)
 4. Security guardrails (secrets handling, env vars, CSP baseline)
 5. ADR scaffolding and first ADRs written
+6. Public marketing homepage (signed-out) with conversion-focused messaging, “Start free” CTA, and a pricing/features chart that can be wired to Lemon Squeezy later
 
 ### 2.2 Repository Structure (Proposed)
 - `apps/web/` — TanStack Start UI (React)
@@ -151,6 +152,12 @@ Backend (Convex):
 - `npm test` passes (even if minimal)
 - Dev can run web app + Convex backend locally following README
 - ADR folder exists + at least 2 ADRs captured (snapshot + tenancy)
+- Signed-out users see a public marketing homepage at `/` (not a broken/blank app shell)
+- Marketing homepage includes:
+  - Primary CTA: “Start free” (opens Clerk sign-up/sign-in)
+  - Webhook-first positioning for the initial wedge (AI triage → route → notify)
+  - Pricing/features chart with plan identifiers/placeholders suitable for later Lemon Squeezy checkout wiring
+- Production experience does not expose dev-only debug banners/diagnostics on the marketing homepage
 
 ---
 

@@ -14,6 +14,9 @@ This document defines the **initial UI routes**, **screens**, and **data require
   3. View/edit workflow metadata and JSON definition (temporary)
   4. Trigger a workflow run (stub execution)
   5. View executions list and execution logs
+- Provide a signed-out marketing homepage:
+  - “Start free” / “Sign in” via Clerk (modal)
+  - Templates + pricing/features sections (billing integration later)
 - Provide clear loading/error/empty states
 - Keep routing stable so Phase 2 can “swap in” the visual builder without breaking navigation
 
@@ -41,7 +44,8 @@ Non-goals (Phase 1 UI):
 
 ### 2.1 Top-level
 1. `/`  
-   Redirect to `/workflows`.
+   Signed-out: marketing homepage (templates, pricing, “Start free”).  
+   Signed-in: redirect to `/workflows`.
 
 2. `/workflows`  
    Workflows list + create workflow CTA.
