@@ -3,12 +3,12 @@
 AI-powered workflow automation platform (MVP in progress).
 
 This repo is a monorepo containing:
-- `apps/web`: Web UI (currently scaffolded with Vite + React + TS)
+- `apps/web`: Web UI (Vite + React + TS) with a Phase 1 Convex-wired debug UI (`AppConvex.tsx`)
 - `convex`: Backend (Convex schema + queries/mutations/actions)
 - `packages/shared`: Shared TypeScript + Zod schemas/types
 - `project_spec`: Product spec, design spec, ADRs, and build plan
 
-> Current state: Phase 0–1 foundations are being built (data model + CRUD + execution stub). Visual builder, workflow engine, and AI nodes are planned phases.
+> Current state: Phase 0–1 foundations are in place (data model + CRUD + execution stub) and the web UI is now wired end-to-end to Convex for the Phase 1 thin slice (bootstrap user → workflows/executions/logs → run stub action). Visual builder, workflow engine, and AI nodes are planned phases.
 
 ---
 
@@ -59,14 +59,23 @@ npm run dev
 This delegates to `apps/web`.
 
 ### 2) Convex backend
-Convex is installed as a dependency, but you still need to **initialize and run Convex locally**.
+Run Convex dev (interactive) from repo root:
+```/dev/null/sh#L1-1
+npx convex dev
+```
 
-Typical flow (high-level):
-1. Create a Convex project (or link an existing one)
-2. Configure auth (later) and environment variables
-3. Run the Convex dev process in parallel with the web dev server
+Until real auth (e.g. Clerk) is wired, enable dev anonymous user mode (dev only):
+```/dev/null/sh#L1-1
+npx convex env set AGENTROMATIC_DEV_ANON_USER true
+```
 
-> The exact Convex initialization commands depend on how you want to configure the project (local vs hosted dev). If you haven’t initialized Convex in this repo yet, do that next.
+Env notes:
+- Convex writes `CONVEX_URL` to the **repo root** `.env.local`.
+- The web app expects `import.meta.env.VITE_CONVEX_URL`.
+- The Vite config maps `CONVEX_URL -> VITE_CONVEX_URL` automatically, so you typically do **not** need a separate `apps/web/.env.local`.
+
+If you still see a “Missing VITE_CONVEX_URL” error in the browser, create `apps/web/.env.local` and set:
+- `VITE_CONVEX_URL=<value of CONVEX_URL from repo root .env.local>`
 
 ---
 
@@ -138,8 +147,13 @@ Phase 2+:
 ---
 
 ## Notes / Caveats
-- The web app is currently a scaffold and not yet integrated with Convex.
-- The Convex backend requires project initialization before it can run.
+- The web app is now integrated with Convex via `apps/web/src/AppConvex.tsx` (Phase 1 debug UI).
+- You must run `npx convex dev` for the backend, and the web app must have access to the Convex URL.
+  - Preferred: let the Vite config read repo root `.env.local` (`CONVEX_URL`) and inject `VITE_CONVEX_URL`.
+  - Fallback: set `VITE_CONVEX_URL` in `apps/web/.env.local`.
+- Until Clerk (or other auth) is wired, you must enable dev anonymous mode:
+  - Convex env var: `AGENTROMATIC_DEV_ANON_USER=true`
+  - The UI calls `users.bootstrap` on load to ensure the `dev_anonymous` user row exists before running queries.
 - Some workspace scripts (tests/formatting) are placeholders until Phase 0–1 stabilizes.
 
 ---

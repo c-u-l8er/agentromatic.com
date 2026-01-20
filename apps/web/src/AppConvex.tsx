@@ -13,7 +13,15 @@ function mustGetConvexUrl(): string {
   const url = (import.meta as any).env?.VITE_CONVEX_URL as string | undefined;
   if (!url || typeof url !== "string") {
     throw new Error(
-      "Missing VITE_CONVEX_URL. Create apps/web/.env.local and set VITE_CONVEX_URL=<your CONVEX_URL>.",
+      `Missing VITE_CONVEX_URL.
+
+Preferred setup:
+- Run \`npx convex dev\` once; it writes \`CONVEX_URL\` to the repo root \`.env.local\`.
+- The web app's Vite config maps \`CONVEX_URL\` -> \`VITE_CONVEX_URL\` automatically.
+
+Fallback:
+- Create \`apps/web/.env.local\` and set:
+  VITE_CONVEX_URL=<value of CONVEX_URL>`,
     );
   }
   return url;
