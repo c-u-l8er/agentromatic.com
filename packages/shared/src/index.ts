@@ -1,4 +1,5 @@
 export * from "./schemas";
+export * from "./nodeRegistry";
 
 /**
  * Public surface area for @agentromatic/shared.

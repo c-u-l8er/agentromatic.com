@@ -76,7 +76,14 @@ function isDevAnonymousUserModeEnabled(): boolean {
 }
 
 function devAnonModeHelp(): string {
-  return "To enable dev anonymous mode: `npx convex env set AGENTROMATIC_DEV_ANON_USER true` (dev only). Then refresh the web app.";
+  return `To enable dev anonymous mode (dev only):
+- \`npx convex env set AGENTROMATIC_DEV_ANON_USER true\`
+- Refresh the web app.
+
+If you are signed in to Clerk in the browser but Convex says "Unauthenticated", Convex did not receive a valid auth token. Common causes:
+- In Clerk, the JWT template named "convex" is missing or renamed.
+- In Convex deployment env, \`CLERK_JWT_ISSUER_DOMAIN\` is missing or does not match the Issuer URL for Clerk's "convex" JWT template.
+- The web app is using a Clerk publishable key for a different Clerk instance than the one configured in Convex.`;
 }
 
 type DbReader = QueryCtx["db"];
@@ -103,7 +110,13 @@ export async function requireIdentity(
   ctx: AnyAuthedCtx,
 ): Promise<ConvexIdentity> {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw newAuthError("AUTH_UNAUTHENTICATED", "Unauthenticated");
+  if (!identity) {
+    throw newAuthError(
+      "AUTH_UNAUTHENTICATED",
+      "Unauthenticated. Convex did not receive a valid auth token (if you are signed in in the browser, this is usually a Clerk + Convex configuration mismatch).",
+      devAnonModeHelp(),
+    );
+  }
   return identity;
 }
 
@@ -182,7 +195,7 @@ export async function getOrCreateCurrentUserId(
   if (!identity && !devAnonEnabled) {
     throw newAuthError(
       "AUTH_UNAUTHENTICATED",
-      "Unauthenticated. This app currently expects auth unless you enable dev anonymous mode.",
+      "Unauthenticated. Convex did not receive a valid auth token. If you are signed in to Clerk in the browser, this usually indicates a Clerk + Convex configuration mismatch (JWT template / issuer domain).",
       devAnonModeHelp(),
     );
   }

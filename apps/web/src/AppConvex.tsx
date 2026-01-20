@@ -10,6 +10,10 @@ import {
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import {
+  WorkflowBuilder,
+  type WorkflowGraphValue,
+} from "./workflow/WorkflowBuilder";
 
 function mustGetConvexUrl(): string {
   const url = (import.meta as any).env?.VITE_CONVEX_URL as string | undefined;
@@ -253,6 +257,14 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
   const [newWorkflowName, setNewWorkflowName] = useState<string>("My workflow");
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const [graphDraft, setGraphDraft] = useState<WorkflowGraphValue>({
+    nodes: [],
+    edges: [],
+  });
+  const [graphDirty, setGraphDirty] = useState<boolean>(false);
+  const [graphSaveError, setGraphSaveError] = useState<string | null>(null);
+
+  // Advanced editor (kept for debugging / editing non-visual fields like trigger/name/status).
   const [workflowEditorText, setWorkflowEditorText] = useState<string>("");
   const [workflowEditorDirty, setWorkflowEditorDirty] =
     useState<boolean>(false);
@@ -264,11 +276,23 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
   const [runError, setRunError] = useState<string | null>(null);
   const [lastRunResult, setLastRunResult] = useState<string | null>(null);
 
-  // Keep editor in sync when selection changes, unless user has modified it.
+  // Keep editors in sync when selection changes, unless the user has modified them.
   useEffect(() => {
-    if (!selectedWorkflow || workflowEditorDirty) return;
-    setWorkflowEditorText(safeJson(selectedWorkflow));
-  }, [selectedWorkflow, workflowEditorDirty]);
+    if (!selectedWorkflow) return;
+
+    if (!graphDirty) {
+      setGraphDraft({
+        nodes: selectedWorkflow.nodes ?? [],
+        edges: selectedWorkflow.edges ?? [],
+      });
+      setGraphSaveError(null);
+    }
+
+    if (!workflowEditorDirty) {
+      setWorkflowEditorText(safeJson(selectedWorkflow));
+      setWorkflowSaveError(null);
+    }
+  }, [graphDirty, selectedWorkflow, workflowEditorDirty]);
 
   async function onCreateWorkflow(): Promise<void> {
     setCreateError(null);
@@ -286,6 +310,27 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
       const message =
         err instanceof Error ? `${err.name}: ${err.message}` : String(err);
       setCreateError(message);
+    }
+  }
+
+  async function onSaveWorkflowDefinition(): Promise<void> {
+    if (!selectedWorkflowId) return;
+
+    setGraphSaveError(null);
+
+    try {
+      await updateWorkflow({
+        id: selectedWorkflowId,
+        patch: {
+          nodes: graphDraft.nodes,
+          edges: graphDraft.edges,
+        } as any,
+      });
+
+      setGraphDirty(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setGraphSaveError(message);
     }
   }
 
@@ -492,7 +537,13 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
                     onClick={() => {
                       setSelectedWorkflowId(w._id);
                       setSelectedExecutionId(null);
+
+                      setGraphDirty(false);
+                      setGraphSaveError(null);
+
                       setWorkflowEditorDirty(false);
+                      setWorkflowSaveError(null);
+
                       setTab("workflows");
                     }}
                     title={w._id}
@@ -553,19 +604,22 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
                   </div>
 
                   <div style={styles.field}>
-                    <label style={styles.label}>Edit (JSON)</label>
-                    <textarea
-                      style={styles.textarea}
-                      value={workflowEditorText}
-                      onChange={(e) => {
-                        setWorkflowEditorText(e.target.value);
-                        setWorkflowEditorDirty(true);
+                    <label style={styles.label}>Definition (Visual)</label>
+
+                    <WorkflowBuilder
+                      value={graphDraft}
+                      onChange={(next) => {
+                        setGraphDraft(next);
+                        setGraphDirty(true);
+
+                        // Keep advanced JSON editor "in sync enough" by marking it dirty only when user edits it.
+                        // (We intentionally do not auto-edit workflowEditorText here to avoid stomping edits.)
                       }}
-                      spellCheck={false}
                     />
+
                     <div style={styles.subtle}>
-                      You can edit `name`, `trigger`, `nodes`, `edges`, and
-                      `status` only. Other fields are ignored on save.
+                      Nodes and edges are edited visually here. In Phase 1,
+                      conditions are stored but not executed yet.
                     </div>
                   </div>
 
@@ -573,21 +627,68 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
                     <button
                       style={styles.button}
                       type="button"
-                      onClick={onSaveWorkflowJson}
-                      disabled={!workflowEditorDirty}
+                      onClick={onSaveWorkflowDefinition}
+                      disabled={!graphDirty}
                     >
-                      Save changes
+                      Save definition
                     </button>
-                    {workflowEditorDirty ? (
-                      <span style={styles.subtle}>Unsaved changes</span>
+                    {graphDirty ? (
+                      <span style={styles.subtle}>
+                        Unsaved definition changes
+                      </span>
                     ) : (
-                      <span style={styles.subtle}>Saved</span>
+                      <span style={styles.subtle}>Definition saved</span>
                     )}
                   </div>
 
-                  {workflowSaveError ? (
-                    <div style={styles.error}>{workflowSaveError}</div>
+                  {graphSaveError ? (
+                    <div style={styles.error}>{graphSaveError}</div>
                   ) : null}
+
+                  <details style={{ marginTop: 12 }}>
+                    <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                      Advanced: Edit workflow JSON
+                    </summary>
+
+                    <div style={{ height: 10 }} />
+
+                    <div style={styles.field}>
+                      <label style={styles.label}>Workflow (JSON)</label>
+                      <textarea
+                        style={styles.textarea}
+                        value={workflowEditorText}
+                        onChange={(e) => {
+                          setWorkflowEditorText(e.target.value);
+                          setWorkflowEditorDirty(true);
+                        }}
+                        spellCheck={false}
+                      />
+                      <div style={styles.subtle}>
+                        You can edit `name`, `trigger`, `nodes`, `edges`, and
+                        `status` only. Other fields are ignored on save.
+                      </div>
+                    </div>
+
+                    <div style={styles.row}>
+                      <button
+                        style={styles.buttonSecondary}
+                        type="button"
+                        onClick={onSaveWorkflowJson}
+                        disabled={!workflowEditorDirty}
+                      >
+                        Save JSON changes
+                      </button>
+                      {workflowEditorDirty ? (
+                        <span style={styles.subtle}>Unsaved JSON changes</span>
+                      ) : (
+                        <span style={styles.subtle}>JSON saved</span>
+                      )}
+                    </div>
+
+                    {workflowSaveError ? (
+                      <div style={styles.error}>{workflowSaveError}</div>
+                    ) : null}
+                  </details>
 
                   <hr style={styles.hr} />
 
