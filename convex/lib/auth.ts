@@ -1,5 +1,6 @@
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
+import { ConvexError } from "convex/values";
 
 /**
  * Auth helpers
@@ -43,8 +44,20 @@ type ConvexIdentity = NonNullable<
   Awaited<ReturnType<AnyAuthedCtx["auth"]["getUserIdentity"]>>
 >;
 
-export class AuthError extends Error {
-  readonly name = "AuthError";
+type AuthErrorCode = "AUTH_UNAUTHENTICATED" | "AUTH_USER_NOT_FOUND";
+
+type AuthErrorData = {
+  code: AuthErrorCode;
+  message: string;
+  hint?: string;
+};
+
+function newAuthError(
+  code: AuthErrorCode,
+  message: string,
+  hint?: string,
+): ConvexError<AuthErrorData> {
+  return new ConvexError({ code, message, hint });
 }
 
 function nowMs(): number {
@@ -52,10 +65,18 @@ function nowMs(): number {
 }
 
 function isDevAnonymousUserModeEnabled(): boolean {
-  // Convex supports environment variables; for local dev you can set this via "npx convex env set".
+  // Convex server functions run on Node and expose env vars via `globalThis.process.env`.
   // Keep this OFF by default. Never enable in production.
-  const env = (globalThis as any)?.process?.env as Record<string, string | undefined> | undefined;
-  return env?.AGENTROMATIC_DEV_ANON_USER === "true";
+  const raw = (globalThis as any)?.process?.env?.AGENTROMATIC_DEV_ANON_USER as
+    | string
+    | undefined;
+
+  // Accept "true" (canonical) and "1" (common shorthand).
+  return raw === "true" || raw === "1";
+}
+
+function devAnonModeHelp(): string {
+  return "To enable dev anonymous mode: `npx convex env set AGENTROMATIC_DEV_ANON_USER true` (dev only). Then refresh the web app.";
 }
 
 type DbReader = QueryCtx["db"];
@@ -82,7 +103,7 @@ export async function requireIdentity(
   ctx: AnyAuthedCtx,
 ): Promise<ConvexIdentity> {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new AuthError("Unauthenticated");
+  if (!identity) throw newAuthError("AUTH_UNAUTHENTICATED", "Unauthenticated");
   return identity;
 }
 
@@ -107,9 +128,18 @@ export async function getCurrentUser(ctx: AnyAuthedDbCtx): Promise<{
   updatedAt: number;
 } | null> {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
 
-  const externalId = identityToExternalId(identity);
+  // Support dev anonymous user mode for queries like `users.me`.
+  // Note: the "dev_anonymous" user row must be created first from a mutation
+  // (e.g. `users.bootstrap`) because queries are read-only.
+  const externalId = identity
+    ? identityToExternalId(identity)
+    : isDevAnonymousUserModeEnabled()
+      ? "dev_anonymous"
+      : null;
+
+  if (!externalId) return null;
+
   return await ctx.db
     .query("users")
     .withIndex("by_externalId", (q) => q.eq("externalId", externalId))
@@ -143,11 +173,18 @@ export async function getOrCreateCurrentUserId(
 ): Promise<Id<"users">> {
   const identity = await ctx.auth.getUserIdentity();
 
+  const devAnonEnabled = isDevAnonymousUserModeEnabled();
+
   const externalId = identity
     ? identityToExternalId(identity)
     : "dev_anonymous";
-  if (!identity && !isDevAnonymousUserModeEnabled()) {
-    throw new AuthError("Unauthenticated");
+
+  if (!identity && !devAnonEnabled) {
+    throw newAuthError(
+      "AUTH_UNAUTHENTICATED",
+      "Unauthenticated. This app currently expects auth unless you enable dev anonymous mode.",
+      devAnonModeHelp(),
+    );
   }
 
   const db = ctx.db as DbReader | DbWriter;
@@ -193,8 +230,10 @@ export async function getOrCreateCurrentUserId(
 
   // We can't create users from a query context.
   if (!isDbWriter(db)) {
-    throw new AuthError(
-      "User record not found. Run a bootstrap mutation first to create your user row (or create it once in dev anonymous mode from a mutation).",
+    throw newAuthError(
+      "AUTH_USER_NOT_FOUND",
+      "User record not found. Queries are read-only, so the user row cannot be created here. Run the `users.bootstrap` mutation once to create your user row, then retry.",
+      devAnonModeHelp(),
     );
   }
 
@@ -233,8 +272,10 @@ export async function requireCurrentUser(ctx: AnyAuthedDbCtx) {
   // - Queries must throw (read-only).
   const db = ctx.db as DbReader | DbWriter;
   if (!isDbWriter(db)) {
-    throw new AuthError(
-      "User record not found. Run a bootstrap mutation first to create your user row.",
+    throw newAuthError(
+      "AUTH_USER_NOT_FOUND",
+      "User record not found. Queries are read-only, so the user row cannot be created here. Run the `users.bootstrap` mutation once to create your user row, then retry.",
+      devAnonModeHelp(),
     );
   }
 
