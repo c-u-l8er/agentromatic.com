@@ -43,8 +43,6 @@ Thumbs.db
 # Convex
 .convex/
 **/.convex/
-convex/_generated/
-**/convex/_generated/
 
 # Misc
 *.tgz
