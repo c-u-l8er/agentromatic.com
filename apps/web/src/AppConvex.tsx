@@ -620,6 +620,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     border: "1px solid #e5e7eb",
     background: "#fff",
+    color: "#111827",
     cursor: "pointer",
   },
   tabActive: {
@@ -713,6 +714,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 10,
     border: "1px solid #e5e7eb",
     background: "#fff",
+    color: "#111827",
     cursor: "pointer",
     fontWeight: 700,
   },
@@ -743,6 +745,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 10,
     border: "1px solid #e5e7eb",
     background: "#fff",
+    color: "#111827",
     cursor: "pointer",
   },
   listItemActive: {
