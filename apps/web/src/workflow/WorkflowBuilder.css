@@ -1,0 +1,201 @@
+/* Photoshop-ish workflow canvas styling for React Flow
+   Import this file somewhere that renders WorkflowBuilder (e.g. WorkflowBuilder.tsx)
+   after `reactflow/dist/style.css` so it overrides defaults.
+
+   Example:
+   import "reactflow/dist/style.css";
+   import "./WorkflowBuilder.css";
+*/
+
+/* Canvas base */
+.react-flow {
+  background: #0b1020;
+  color: #e5e7eb;
+}
+
+/* Hide default dotted bg if you use <Background />; your grid should come from the component */
+.react-flow__background {
+  opacity: 1;
+}
+
+/* Pane / viewport cursor feel */
+.react-flow__pane {
+  cursor: grab;
+}
+.react-flow__pane:active {
+  cursor: grabbing;
+}
+
+/* Subtle vignette to make it feel like a design surface */
+.react-flow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 700px at 40% 35%, rgba(255, 255, 255, 0.06), transparent 60%),
+    radial-gradient(900px 600px at 70% 60%, rgba(99, 102, 241, 0.08), transparent 60%),
+    radial-gradient(1400px 900px at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* Nodes: floating "modules" */
+.react-flow__node {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111827;
+  border: 1px solid rgba(17, 24, 39, 0.10);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    box-shadow 140ms ease,
+    transform 140ms ease,
+    border-color 140ms ease;
+}
+
+/* Slight lift on hover */
+.react-flow__node:hover {
+  transform: translateY(-1px);
+  border-color: rgba(59, 130, 246, 0.25);
+  box-shadow:
+    0 22px 55px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.60) inset;
+}
+
+/* Selected: glow ring like a focused layer */
+.react-flow__node.selected,
+.react-flow__node:focus-within {
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.42),
+    0 0 0 2px rgba(59, 130, 246, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.60) inset;
+}
+
+/* Default node content wrapper */
+.react-flow__node-default {
+  padding: 10px 12px;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+/* Optional: make long labels wrap nicely */
+.react-flow__node-default * {
+  max-width: 260px;
+  word-break: break-word;
+}
+
+/* Handles: crisp connectors */
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #111827;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.12);
+  background: #2563eb;
+}
+
+.react-flow__handle-connecting {
+  background: #2563eb;
+}
+
+/* Edges: slightly glowy wires */
+.react-flow__edge-path {
+  stroke: rgba(226, 232, 240, 0.75);
+  stroke-width: 2;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: rgba(59, 130, 246, 0.95);
+  stroke-width: 2.5;
+}
+
+/* Edge labels (conditions) */
+.react-flow__edge-text,
+.react-flow__edge-textbg {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.react-flow__edge-text {
+  fill: rgba(229, 231, 235, 0.90);
+}
+
+.react-flow__edge-textbg {
+  fill: rgba(10, 14, 28, 0.75);
+  rx: 10px;
+  ry: 10px;
+}
+
+/* Selection rectangle */
+.react-flow__selection {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.50);
+}
+
+/* Minimap: looks like a floating panel */
+.react-flow__minimap {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(17, 24, 39, 0.10);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+/* Controls: floating buttons */
+.react-flow__controls {
+  background: transparent;
+  box-shadow: none;
+}
+
+.react-flow__controls-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(17, 24, 39, 0.10);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.react-flow__controls-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(59, 130, 246, 0.25);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.react-flow__controls-button svg {
+  fill: #111827;
+}
+
+/* Attribution: hide if you don't want it (ensure licensing is OK for your usage) */
+.react-flow__attribution {
+  opacity: 0.5;
+  color: rgba(229, 231, 235, 0.7);
+}
+
+/* Performance: reduce expensive effects for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__node,
+  .react-flow__controls-button,
+  .react-flow__handle {
+    transition: none !important;
+  }
+  .react-flow__edge-path {
+    filter: none !important;
+  }
+}

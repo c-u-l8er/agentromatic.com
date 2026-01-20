@@ -10,10 +10,6 @@ import {
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import {
-  WorkflowBuilder,
-  type WorkflowGraphValue,
-} from "./workflow/WorkflowBuilder";
 
 function mustGetConvexUrl(): string {
   const url = (import.meta as any).env?.VITE_CONVEX_URL as string | undefined;
@@ -257,13 +253,6 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
   const [newWorkflowName, setNewWorkflowName] = useState<string>("My workflow");
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const [graphDraft, setGraphDraft] = useState<WorkflowGraphValue>({
-    nodes: [],
-    edges: [],
-  });
-  const [graphDirty, setGraphDirty] = useState<boolean>(false);
-  const [graphSaveError, setGraphSaveError] = useState<string | null>(null);
-
   // Advanced editor (kept for debugging / editing non-visual fields like trigger/name/status).
   const [workflowEditorText, setWorkflowEditorText] = useState<string>("");
   const [workflowEditorDirty, setWorkflowEditorDirty] =
@@ -280,19 +269,11 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
   useEffect(() => {
     if (!selectedWorkflow) return;
 
-    if (!graphDirty) {
-      setGraphDraft({
-        nodes: selectedWorkflow.nodes ?? [],
-        edges: selectedWorkflow.edges ?? [],
-      });
-      setGraphSaveError(null);
-    }
-
     if (!workflowEditorDirty) {
       setWorkflowEditorText(safeJson(selectedWorkflow));
       setWorkflowSaveError(null);
     }
-  }, [graphDirty, selectedWorkflow, workflowEditorDirty]);
+  }, [selectedWorkflow, workflowEditorDirty]);
 
   async function onCreateWorkflow(): Promise<void> {
     setCreateError(null);
@@ -310,27 +291,6 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
       const message =
         err instanceof Error ? `${err.name}: ${err.message}` : String(err);
       setCreateError(message);
-    }
-  }
-
-  async function onSaveWorkflowDefinition(): Promise<void> {
-    if (!selectedWorkflowId) return;
-
-    setGraphSaveError(null);
-
-    try {
-      await updateWorkflow({
-        id: selectedWorkflowId,
-        patch: {
-          nodes: graphDraft.nodes,
-          edges: graphDraft.edges,
-        } as any,
-      });
-
-      setGraphDirty(false);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setGraphSaveError(message);
     }
   }
 
@@ -538,9 +498,6 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
                       setSelectedWorkflowId(w._id);
                       setSelectedExecutionId(null);
 
-                      setGraphDirty(false);
-                      setGraphSaveError(null);
-
                       setWorkflowEditorDirty(false);
                       setWorkflowSaveError(null);
 
@@ -606,44 +563,24 @@ function AppInner(props: { convexUrl: string }): React.ReactElement {
                   <div style={styles.field}>
                     <label style={styles.label}>Definition (Visual)</label>
 
-                    <WorkflowBuilder
-                      value={graphDraft}
-                      onChange={(next) => {
-                        setGraphDraft(next);
-                        setGraphDirty(true);
-
-                        // Keep advanced JSON editor "in sync enough" by marking it dirty only when user edits it.
-                        // (We intentionally do not auto-edit workflowEditorText here to avoid stomping edits.)
+                    <a
+                      href={`/workflows/${selectedWorkflow._id}/visual`}
+                      style={{
+                        ...styles.buttonSecondary,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textDecoration: "none",
                       }}
-                    />
+                    >
+                      Open visual editor
+                    </a>
 
                     <div style={styles.subtle}>
-                      Nodes and edges are edited visually here. In Phase 1,
-                      conditions are stored but not executed yet.
+                      The visual workflow builder now lives on its own page for
+                      a full-canvas editing experience.
                     </div>
                   </div>
-
-                  <div style={styles.row}>
-                    <button
-                      style={styles.button}
-                      type="button"
-                      onClick={onSaveWorkflowDefinition}
-                      disabled={!graphDirty}
-                    >
-                      Save definition
-                    </button>
-                    {graphDirty ? (
-                      <span style={styles.subtle}>
-                        Unsaved definition changes
-                      </span>
-                    ) : (
-                      <span style={styles.subtle}>Definition saved</span>
-                    )}
-                  </div>
-
-                  {graphSaveError ? (
-                    <div style={styles.error}>{graphSaveError}</div>
-                  ) : null}
 
                   <details style={{ marginTop: 12 }}>
                     <summary style={{ cursor: "pointer", fontWeight: 700 }}>

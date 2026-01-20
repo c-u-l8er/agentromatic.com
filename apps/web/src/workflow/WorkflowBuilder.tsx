@@ -24,6 +24,9 @@ import ReactFlow, {
   type ReactFlowInstance,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import "./WorkflowBuilder.css";
+
+/* eslint-disable react-hooks/set-state-in-effect -- WorkflowBuilder intentionally syncs draft/editor state from controlled props and selection */
 
 import { ids } from "../lib/ids";
 import {
@@ -533,249 +536,486 @@ export function WorkflowBuilder(props: Props): React.ReactElement {
     pushChange([], []);
   }, [pushChange, readOnly]);
 
+  const [showPalette, setShowPalette] = useState(true);
+  const [showInspector, setShowInspector] = useState(true);
+  const [showMiniMap, setShowMiniMap] = useState(true);
+  const [showControls, setShowControls] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [quickAddType, setQuickAddType] = useState<string>("");
+
+  const fitViewNow = useCallback(() => {
+    reactFlowRef.current?.fitView({ padding: 0.2, duration: 250 });
+  }, []);
+
   const canEdit = !readOnly;
 
   return (
     <div
       className={props.className}
       style={{
-        display: "flex",
-        gap: 12,
-        alignItems: "stretch",
+        position: "relative",
         width: "100%",
-        height: "80vh",
-        minHeight: 520,
+        height: "100vh",
+        minHeight: 640,
+        overflow: "hidden",
+        background: "#0b1020",
         ...props.style,
       }}
     >
+      {/* Top menu (Photoshop-like) */}
       <div
         style={{
-          flex: 1,
-          minWidth: 0,
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          overflow: "hidden",
-          background: "#fff",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 48,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "8px 10px",
+          borderBottom: "1px solid rgba(255,255,255,0.10)",
+          background: "rgba(10, 14, 28, 0.88)",
+          backdropFilter: "blur(10px)",
+          zIndex: 20,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            padding: 10,
-            borderBottom: "1px solid #e5e7eb",
-            background: "#fff",
+        <div style={{ fontWeight: 900, color: "#e5e7eb", letterSpacing: 0.2 }}>
+          Workflow Builder
+        </div>
+
+        <div style={{ width: 10 }} />
+
+        <select
+          value={quickAddType}
+          onChange={(e) => {
+            const next = e.target.value;
+            setQuickAddType(next);
+            if (isNodeType(next)) {
+              addNode(next);
+              setQuickAddType("");
+            }
           }}
+          disabled={!canEdit}
+          style={{
+            height: 32,
+            padding: "0 10px",
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: canEdit ? "rgba(255,255,255,0.06)" : "#111827",
+            color: "#e5e7eb",
+            outline: "none",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: canEdit ? "pointer" : "not-allowed",
+          }}
+          title="Add a module"
         >
-          <div style={{ fontWeight: 800, color: "#111827" }}>
-            Workflow Builder
-          </div>
+          <option value="">Add module…</option>
+          {palette.map((d) => (
+            <option key={d.type} value={d.type}>
+              {d.title} ({d.type})
+            </option>
+          ))}
+        </select>
 
-          <div style={{ flex: 1 }} />
+        <div style={{ flex: 1 }} />
 
-          <button
-            type="button"
-            onClick={deleteSelected}
-            disabled={!canEdit || (!selectedNodeId && !selectedEdgeId)}
-            style={buttonStyle(
-              !canEdit || (!selectedNodeId && !selectedEdgeId),
-            )}
-          >
-            Delete selected
-          </button>
-
-          <button
-            type="button"
-            onClick={clearGraph}
-            disabled={!canEdit || (nodes.length === 0 && edges.length === 0)}
-            style={buttonStyle(
-              !canEdit || (nodes.length === 0 && edges.length === 0),
-            )}
-          >
-            Clear
-          </button>
-        </div>
-
-        <div
-          style={{ width: "100%", height: "calc(80vh - 52px)", minHeight: 468 }}
+        <button
+          type="button"
+          onClick={fitViewNow}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,255,255,0.06)",
+            color: "#e5e7eb",
+            cursor: "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+          }}
+          title="Fit view"
         >
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onInit={(instance) => {
-              reactFlowRef.current = instance;
-            }}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect as OnConnect}
-            onSelectionChange={onSelectionChange}
-            fitView
-            nodesDraggable={!readOnly}
-            nodesConnectable={!readOnly}
-            elementsSelectable={true}
-            edgesFocusable={true}
-            edgesUpdatable={!readOnly}
-          >
-            <Background gap={16} size={1} />
-            <MiniMap />
-            <Controls />
-          </ReactFlow>
-        </div>
+          Fit
+        </button>
+
+        <button
+          type="button"
+          onClick={deleteSelected}
+          disabled={!canEdit || (!selectedNodeId && !selectedEdgeId)}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background:
+              !canEdit || (!selectedNodeId && !selectedEdgeId)
+                ? "rgba(255,255,255,0.04)"
+                : "rgba(255,255,255,0.06)",
+            color: "#e5e7eb",
+            cursor:
+              !canEdit || (!selectedNodeId && !selectedEdgeId)
+                ? "not-allowed"
+                : "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+            opacity: !canEdit || (!selectedNodeId && !selectedEdgeId) ? 0.6 : 1,
+          }}
+          title="Delete selected"
+        >
+          Delete
+        </button>
+
+        <button
+          type="button"
+          onClick={clearGraph}
+          disabled={!canEdit || (nodes.length === 0 && edges.length === 0)}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background:
+              !canEdit || (nodes.length === 0 && edges.length === 0)
+                ? "rgba(255,255,255,0.04)"
+                : "rgba(255,255,255,0.06)",
+            color: "#e5e7eb",
+            cursor:
+              !canEdit || (nodes.length === 0 && edges.length === 0)
+                ? "not-allowed"
+                : "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+            opacity:
+              !canEdit || (nodes.length === 0 && edges.length === 0) ? 0.6 : 1,
+          }}
+          title="Clear graph"
+        >
+          Clear
+        </button>
+
+        <div style={{ width: 10 }} />
+
+        <button
+          type="button"
+          onClick={() => setShowPalette((v) => !v)}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: showPalette
+              ? "1px solid rgba(255,255,255,0.20)"
+              : "1px solid rgba(255,255,255,0.12)",
+            background: showPalette ? "#111827" : "rgba(255,255,255,0.04)",
+            color: "#e5e7eb",
+            cursor: "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+          }}
+          title="Toggle palette"
+        >
+          Palette
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowInspector((v) => !v)}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: showInspector
+              ? "1px solid rgba(255,255,255,0.20)"
+              : "1px solid rgba(255,255,255,0.12)",
+            background: showInspector ? "#111827" : "rgba(255,255,255,0.04)",
+            color: "#e5e7eb",
+            cursor: "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+          }}
+          title="Toggle inspector"
+        >
+          Inspector
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowMiniMap((v) => !v)}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: showMiniMap
+              ? "1px solid rgba(255,255,255,0.20)"
+              : "1px solid rgba(255,255,255,0.12)",
+            background: showMiniMap ? "#111827" : "rgba(255,255,255,0.04)",
+            color: "#e5e7eb",
+            cursor: "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+          }}
+          title="Toggle minimap"
+        >
+          Minimap
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowControls((v) => !v)}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: showControls
+              ? "1px solid rgba(255,255,255,0.20)"
+              : "1px solid rgba(255,255,255,0.12)",
+            background: showControls ? "#111827" : "rgba(255,255,255,0.04)",
+            color: "#e5e7eb",
+            cursor: "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+          }}
+          title="Toggle controls"
+        >
+          Controls
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowGrid((v) => !v)}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: showGrid
+              ? "1px solid rgba(255,255,255,0.20)"
+              : "1px solid rgba(255,255,255,0.12)",
+            background: showGrid ? "#111827" : "rgba(255,255,255,0.04)",
+            color: "#e5e7eb",
+            cursor: "pointer",
+            fontWeight: 800,
+            fontSize: 12,
+          }}
+          title="Toggle grid"
+        >
+          Grid
+        </button>
       </div>
 
-      <aside
+      {/* Full-canvas editor */}
+      <div
         style={{
-          width: 340,
-          flex: "0 0 340px",
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          background: "#fff",
-          overflow: "auto",
+          position: "absolute",
+          top: 48,
+          left: 0,
+          right: 0,
+          bottom: 0,
         }}
       >
-        <Section title="Palette">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {palette.map((d) => (
-              <button
-                key={d.type}
-                type="button"
-                onClick={() => addNode(d.type)}
-                disabled={!canEdit}
-                style={buttonStyle(!canEdit)}
-                title={d.description}
-              >
-                <div style={{ fontWeight: 800 }}>{d.title}</div>
-                <div style={{ fontSize: 12, color: "#6b7280" }}>{d.type}</div>
-              </button>
-            ))}
-          </div>
-        </Section>
-
-        <Section title="Inspector">
-          {selectedNode ? (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onInit={(instance) => {
+            reactFlowRef.current = instance;
+          }}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect as OnConnect}
+          onSelectionChange={onSelectionChange}
+          fitView
+          nodesDraggable={!readOnly}
+          nodesConnectable={!readOnly}
+          elementsSelectable={true}
+          edgesFocusable={true}
+          edgesUpdatable={!readOnly}
+        >
+          {showGrid ? (
             <>
-              <div style={labelStyle}>Selected node</div>
-              <div style={monoSmallStyle}>{selectedNode.id}</div>
+              {/* Minor grid */}
+              <Background gap={16} size={1} color="rgba(255,255,255,0.06)" />
+              {/* Major grid */}
+              <Background gap={80} size={1} color="rgba(255,255,255,0.10)" />
+            </>
+          ) : null}
 
-              <div style={{ height: 10 }} />
+          {showMiniMap ? <MiniMap /> : null}
+          {showControls ? <Controls /> : null}
+        </ReactFlow>
+      </div>
 
-              <label style={labelStyle}>Type</label>
-              <select
-                value={nodeTypeDraft}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setNodeTypeDraft(next);
-                  if (canEdit) commitSelectedNodeType(next);
-                }}
-                disabled={!canEdit}
-                style={inputStyle}
-              >
-                {/* Prefer registry types in the dropdown */}
-                {palette.map((d) => (
-                  <option key={d.type} value={d.type}>
-                    {d.title} ({d.type})
-                  </option>
-                ))}
+      {/* Floating panels (Photoshop-like) */}
+      {showPalette ? (
+        <div
+          style={{
+            position: "absolute",
+            top: 60,
+            left: 12,
+            width: 320,
+            maxHeight: "calc(100% - 72px)",
+            overflow: "auto",
+            borderRadius: 12,
+            border: "1px solid rgba(17,24,39,0.10)",
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(10px)",
+            boxShadow: "0 14px 40px rgba(0,0,0,0.35)",
+            zIndex: 30,
+          }}
+        >
+          <Section title="Palette">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {palette.map((d) => (
+                <button
+                  key={d.type}
+                  type="button"
+                  onClick={() => addNode(d.type)}
+                  disabled={!canEdit}
+                  style={buttonStyle(!canEdit)}
+                  title={d.description}
+                >
+                  <div style={{ fontWeight: 800 }}>{d.title}</div>
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>{d.type}</div>
+                </button>
+              ))}
+            </div>
+          </Section>
+        </div>
+      ) : null}
 
-                {/* If the node has a non-registry type, still show it so it isn’t lost */}
-                {nodeTypeDraft && !isNodeType(nodeTypeDraft) ? (
-                  <option value={nodeTypeDraft}>
-                    {nodeTypeDraft} (custom)
-                  </option>
-                ) : null}
-              </select>
+      {showInspector ? (
+        <div
+          style={{
+            position: "absolute",
+            top: 60,
+            right: 12,
+            width: 360,
+            maxHeight: "calc(100% - 72px)",
+            overflow: "auto",
+            borderRadius: 12,
+            border: "1px solid rgba(17,24,39,0.10)",
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(10px)",
+            boxShadow: "0 14px 40px rgba(0,0,0,0.35)",
+            zIndex: 30,
+          }}
+        >
+          <Section title="Inspector">
+            {selectedNode ? (
+              <>
+                <div style={labelStyle}>Selected node</div>
+                <div style={monoSmallStyle}>{selectedNode.id}</div>
 
-              <div style={{ height: 10 }} />
+                <div style={{ height: 10 }} />
 
-              <label style={labelStyle}>Config (JSON)</label>
-              <textarea
-                value={nodeConfigText}
-                onChange={(e) => setNodeConfigText(e.target.value)}
-                spellCheck={false}
-                style={{ ...textareaStyle, height: 180 }}
-                disabled={!canEdit}
-              />
+                <label style={labelStyle}>Type</label>
+                <select
+                  value={nodeTypeDraft}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setNodeTypeDraft(next);
+                    if (canEdit) commitSelectedNodeType(next);
+                  }}
+                  disabled={!canEdit}
+                  style={inputStyle}
+                >
+                  {/* Prefer registry types in the dropdown */}
+                  {palette.map((d) => (
+                    <option key={d.type} value={d.type}>
+                      {d.title} ({d.type})
+                    </option>
+                  ))}
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {/* If the node has a non-registry type, still show it so it isn’t lost */}
+                  {nodeTypeDraft && !isNodeType(nodeTypeDraft) ? (
+                    <option value={nodeTypeDraft}>
+                      {nodeTypeDraft} (custom)
+                    </option>
+                  ) : null}
+                </select>
+
+                <div style={{ height: 10 }} />
+
+                <label style={labelStyle}>Config (JSON)</label>
+                <textarea
+                  value={nodeConfigText}
+                  onChange={(e) => setNodeConfigText(e.target.value)}
+                  spellCheck={false}
+                  style={{ ...textareaStyle, height: 180 }}
+                  disabled={!canEdit}
+                />
+
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={commitSelectedNodeConfig}
+                    disabled={!canEdit}
+                    style={buttonStyle(!canEdit)}
+                  >
+                    Apply config
+                  </button>
+                  {nodeConfigError ? (
+                    <span style={{ color: "#991b1b", fontSize: 12 }}>
+                      {nodeConfigError}
+                    </span>
+                  ) : (
+                    <span style={{ color: "#6b7280", fontSize: 12 }}>
+                      {isNodeType(nodeTypeDraft)
+                        ? "Validated"
+                        : "Unvalidated (custom type)"}
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : selectedEdge ? (
+              <>
+                <div style={labelStyle}>Selected edge</div>
+                <div style={monoSmallStyle}>
+                  {selectedEdge.source} → {selectedEdge.target}
+                </div>
+
+                <div style={{ height: 10 }} />
+
+                <label style={labelStyle}>Condition (MVP DSL)</label>
+                <input
+                  value={edgeConditionText}
+                  onChange={(e) => setEdgeConditionText(e.target.value)}
+                  onBlur={() => {
+                    if (canEdit) commitSelectedEdgeCondition();
+                  }}
+                  placeholder="e.g. $.lead.score >= 80 and $.lead.region == 'US'"
+                  style={inputStyle}
+                  disabled={!canEdit}
+                />
+
+                <div style={{ height: 10 }} />
+
                 <button
                   type="button"
-                  onClick={commitSelectedNodeConfig}
+                  onClick={commitSelectedEdgeCondition}
                   disabled={!canEdit}
                   style={buttonStyle(!canEdit)}
                 >
-                  Apply config
+                  Apply condition
                 </button>
-                {nodeConfigError ? (
-                  <span style={{ color: "#991b1b", fontSize: 12 }}>
-                    {nodeConfigError}
-                  </span>
-                ) : (
-                  <span style={{ color: "#6b7280", fontSize: 12 }}>
-                    {isNodeType(nodeTypeDraft)
-                      ? "Validated"
-                      : "Unvalidated (custom type)"}
-                  </span>
-                )}
+
+                <div style={{ height: 10 }} />
+
+                <div style={{ fontSize: 12, color: "#6b7280" }}>
+                  In Phase 1, conditions are stored but not executed yet.
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 13, color: "#6b7280" }}>
+                Select a node or edge to edit its details.
               </div>
-            </>
-          ) : selectedEdge ? (
-            <>
-              <div style={labelStyle}>Selected edge</div>
-              <div style={monoSmallStyle}>
-                {selectedEdge.source} → {selectedEdge.target}
-              </div>
+            )}
+          </Section>
 
-              <div style={{ height: 10 }} />
-
-              <label style={labelStyle}>Condition (MVP DSL)</label>
-              <input
-                value={edgeConditionText}
-                onChange={(e) => setEdgeConditionText(e.target.value)}
-                onBlur={() => {
-                  if (canEdit) commitSelectedEdgeCondition();
-                }}
-                placeholder="e.g. $.lead.score >= 80 and $.lead.region == 'US'"
-                style={inputStyle}
-                disabled={!canEdit}
-              />
-
-              <div style={{ height: 10 }} />
-
-              <button
-                type="button"
-                onClick={commitSelectedEdgeCondition}
-                disabled={!canEdit}
-                style={buttonStyle(!canEdit)}
-              >
-                Apply condition
-              </button>
-
-              <div style={{ height: 10 }} />
-
-              <div style={{ fontSize: 12, color: "#6b7280" }}>
-                In Phase 1, conditions are stored but not executed yet.
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: 13, color: "#6b7280" }}>
-              Select a node or edge to edit its details.
+          <Section title="Storage Preview">
+            <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
+              This is the persisted shape (no React Flow ids).
             </div>
-          )}
-        </Section>
-
-        <Section title="Storage Preview">
-          <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
-            This is the persisted shape (no React Flow ids).
-          </div>
-          <pre style={preStyle}>
-            {safeJson({
-              nodes: fromReactFlowNodes(nodes),
-              edges: fromReactFlowEdges(edges),
-            })}
-          </pre>
-        </Section>
-      </aside>
+            <pre style={preStyle}>
+              {safeJson({
+                nodes: fromReactFlowNodes(nodes),
+                edges: fromReactFlowEdges(edges),
+              })}
+            </pre>
+          </Section>
+        </div>
+      ) : null}
     </div>
   );
 }
