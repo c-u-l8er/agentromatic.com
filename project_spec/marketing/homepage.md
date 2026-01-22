@@ -1,4 +1,4 @@
-# Agentromatic — Marketing Homepage Spec (v0.1)
+# Agentromatic — Marketing Homepage Spec (v0.2) — DevOps & Platform Engineering
 Status: Draft  
 Owner: Product + Engineering  
 Audience: Engineering (web), Design, Growth  
@@ -6,36 +6,43 @@ Last updated: 2026-01-20
 
 ## 0) Purpose
 Define the public, signed-out marketing homepage for Agentromatic in a way that:
-- **aligns with the product + design specs** (workflow automation, agents, logs, snapshots, safe conditions, integrations foundation)
-- **aligns with current implementation reality** (hosted dashboard, Clerk auth, Convex backend, early-stage connectors)
-- maximizes conversion for the initial wedge: **Webhook → AI triage → route → notify (chat)**
+- **reflects the DevOps / Platform Engineering vertical** (platform teams, SRE, DevOps leads)
+- **stays honest to current implementation** (early-stage product: Convex backend, Clerk auth, Phase 1 workflow/execution/log scaffolding)
+- orients the roadmap without overpromising (Temporal-based execution + multi-agent orchestration is the direction; shipping status must be clear)
+- maximizes conversion for the initial wedge: **DevOps workflows as code → durable runs → audit-ready logs**
 
-This doc is a marketing spec, not a UI toolkit spec. It describes sections, copy intent, CTAs, and truth constraints.
+This doc is a marketing spec (copy intent + sections + CTAs + truth constraints), not a UI toolkit spec.
 
 ---
 
 ## 1) Target user + positioning
 
-### 1.1 Primary audience
-Zapier/Make power users and ops teams who:
-- rely on inbound signals (webhooks from forms, apps, internal services)
-- route/triage requests to teams via chat
-- are frustrated with brittle automations + opaque failures
-- want AI to help with classification but need **control + auditability**
+### 1.1 Primary audience (ICP)
+Platform / DevOps / SRE teams at software companies (roughly 50–500 engineers) who:
+- run Kubernetes + IaC (Terraform/Pulumi) and manage CI/CD pipelines
+- struggle with fragmented “glue scripts” + ad-hoc runbooks (“integration tax”)
+- need reliability, reproducibility, audit trails, and controlled automation (not brittle “best effort”)
+- want automation that fits SDLC: Git, PRs, environments, approvals, rollbacks
 
-### 1.2 Core positioning statement (homepage)
-**AI webhook triage that routes to the right channel—fast.**  
-Webhook-first automation with AI + deterministic rules + run logs.
+### 1.2 Secondary audiences
+- Platform engineering leads building internal developer platforms (IDPs)
+- DevOps consultancies standardizing deployment workflows across clients
+- Security/compliance partners who need evidence (SOC2-style audit trails)
 
-### 1.3 “Reason to believe” (must be spec-aligned)
-From `workflow_automation_design_spec.md` and ADRs:
-- Workflows are DAGs with nodes/edges; executions have logs.
-- Execution logs are structured and stored.
-- Snapshotting is required for correctness/auditability (documented in build plan/contracts).
+### 1.3 Core positioning statement (homepage)
+**DevOps workflows as code—durable, auditable, and agent-assisted.**  
+Agentromatic is a workflow platform for engineering teams: define workflows in code, run them reliably, and debug with full event history and logs.
+
+### 1.4 One-sentence pitch (homepage)
+**“Temporal-style reliability for DevOps workflows: code-first automation with durable runs, audit-ready logs, and agent orchestration.”**
+
+### 1.5 “Reason to believe” (must be spec-aligned)
+From `workflow_automation_design_spec.md`, `api_contracts.md`, and ADRs:
+- Workflows are DAGs with nodes/edges; executions have structured logs.
+- Each execution stores a **workflow snapshot** for correctness/auditability.
 - Conditions are MVP-safe and deterministic (ADR-0002: no `eval`).
 - Credentials are server-side and safe-by-default (design intent).
-
-Homepage should avoid deep infra terms in the hero, but can use them in proof sections.
+- The system is designed for debuggability: inputs/outputs/errors are inspectable per step.
 
 ---
 
@@ -45,16 +52,14 @@ Homepage should avoid deep infra terms in the hero, but can use them in proof se
 Route: `/`
 
 - **Signed-out**: show marketing homepage.
-- **Signed-in**: user should land in the product experience (currently workflows dashboard / app shell).
-
-This is a deliberate divergence from the earlier Phase 1 route assumption (“redirect to /workflows”) and is now the intended behavior.
+- **Signed-in**: user should land in the product experience (workflows dashboard / app shell).
 
 ### 2.2 Auth CTAs (Clerk)
 Homepage CTAs:
 - Primary: **Start free** → opens Clerk sign-up (modal).
 - Secondary: **Sign in** → opens Clerk sign-in (modal).
 
-No gating copy like “request access” unless the business strategy changes.
+Avoid “Request access” unless strategy changes.
 
 ---
 
@@ -62,150 +67,172 @@ No gating copy like “request access” unless the business strategy changes.
 
 ### 3.1 Top navigation
 - Brand: Agentromatic
-- Anchors: Templates, How it works, Pricing, FAQ
+- Anchors (recommended): Use cases, How it works, Integrations, Pricing, FAQ
 - CTAs: Sign in, Start free
 
 ### 3.2 Hero (above the fold)
-Goal: communicate the wedge in < 5 seconds and get “Start free” clicks.
+Goal: communicate the DevOps/platform value prop in < 5 seconds and drive “Start free”.
 
 Hero requirements:
-- Plain-language value prop for Zapier replacement buyers
-- Mentions webhook-first + routing + chat notify
-- Includes “trust” proof line(s): logs, reproducibility, safe rules
+- Explicitly code-first + SDLC-native (Git/PRs/testing), not “visual automation”
+- Emphasize durability + auditability (runs survive restarts; every run is traceable)
+- Include a short code snippet that looks like real engineering work (TypeScript/Python)
 
-Hero copy constraints:
-- Do not claim “100+ integrations” unless true in product.
-- If chat connectors are not fully shipped, mark them as **beta** (or avoid explicit naming).
+Hero copy constraints (truth):
+- Do not claim “99.999% uptime guarantee” unless backed by an actual SLA.
+- Do not claim “predict failures at 90% accuracy” unless measured and shipped.
+- Do not claim broad integration counts (“100+ integrations”) unless true.
 
 Suggested trust bullets:
-- “No black box: inspect inputs/outputs/errors.”
-- “Reproducible: each run is snapshotted.”
-- “Safe rules: deterministic conditions (no arbitrary code execution).”
+- “No black box: inspect inputs/outputs/errors per step.”
+- “Reproducible: each run snapshots the workflow definition.”
+- “Safe by default: deterministic rules (no arbitrary code execution).”
 
-### 3.3 “Outcome” / value prop strip
-Goal: fast scanning.
-
+### 3.3 Value prop strip (fast scan)
 3 cards:
-1. Triage with AI (classify/extract/summarize)
-2. Route with rules (safe deterministic conditions)
-3. Notify chat (Slack/Mattermost/Discord *if true*; otherwise “chat tools”)
+1. **Workflows as code**: TypeScript/Python SDK, diffable, testable, reviewable
+2. **Durable execution + observability**: event history, retries, step logs, run replay
+3. **DevOps-ready governance**: environments, approvals, RBAC/audit trail (as “planned” if not shipped)
 
-### 3.4 Templates section
-Goal: reduce activation friction and increase “Start free”.
+### 3.4 Use cases / templates section (DevOps-native)
+Goal: reduce activation friction with templates that match platform team work.
 
 Requirements:
-- At least 3 templates, keyed by destination:
-  - Slack template
-  - Mattermost template
-  - Discord template
-- Each template explains:
+- At least 3 templates (DevOps-specific), each with:
   - what it does
-  - an example routing rule (pseudocode)
-- CTA per template: **Use this template** → Start free (sign-up modal)
+  - triggers (manual, Git webhook, CI event)
+  - the “failure mode story” (what happens on failure: rollback, alerts)
+  - CTA: **Use this template** → Start free (sign-up modal)
 
-### 3.5 “How it works” section
+Recommended templates for v0.2:
+1. **Kubernetes deploy with smoke tests + rollback**
+   - deploy → validate → rollback on failed checks → notify
+2. **Terraform plan/apply with policy gates**
+   - plan → policy check → apply → drift check → notify/audit
+3. **Incident workflow: triage → mitigation runbook → notify**
+   - pager event → summarize context → run safe mitigations → post timeline
+
+Templates should be described as “starter templates” and may be labeled “beta” if not fully wired.
+
+### 3.5 “How it works” section (engineering flow)
 3-step flow:
-1. Receive webhook payload
-2. AI triage extracts structured fields
-3. Route + notify to the correct channel
+1. **Define** workflows in code and store in Git (PR reviews, tests)
+2. **Run** via UI/CLI/webhook and get durable execution (retries, resumability)
+3. **Observe** runs with a trace + logs + audit trail (what ran, when, why)
 
-Include a “why switch” callout:
-- Inspectability (logs)
-- Reproducibility (snapshots)
-- Safety (no eval / deterministic rules)
+Include a “why this vs GitHub Actions scripts” callout:
+- Workflows aren’t tied to a repo runner lifecycle
+- Durable state and event history
+- Consistent governance across environments
 
-### 3.6 Pricing section (Lemon Squeezy-ready)
-Goal: set expectations and provide a structure to wire billing later.
+### 3.6 Integrations section (honest and focused)
+Goal: show you understand the ecosystem without claiming breadth.
 
 Requirements:
-- Plans: Free, Pro, Business, Enterprise
-- Credit-based framing (aligns to `workflow_automation.md` pricing model: credits vs tasks)
+- List only integrations that are real or explicitly “planned”.
+- Prefer a small list of deep integrations:
+  - GitHub/GitLab (planned/partial)
+  - Kubernetes (planned)
+  - Terraform/Pulumi (planned)
+  - Datadog/Prometheus (planned)
+  - Slack/PagerDuty (planned)
+
+Copy guidance:
+- Use “Roadmap” or “Rolling out” language for anything not shipping today.
+- Avoid implying “click-to-connect OAuth” unless it exists.
+
+### 3.7 Pricing section (Lemon Squeezy-ready)
+Goal: set expectations and make checkout wiring easy later.
+
+Requirements:
+- Plans: Free, Team, Business, Enterprise
+- Usage-based framing: executions, environments, retention (credits optional but should map cleanly)
 - CTAs:
   - Free: Start free (Clerk sign-up modal)
-  - Pro/Business: placeholder buttons with plan identifiers usable for checkout wiring (e.g., `data-plan="pro"`)
+  - Team/Business: placeholder buttons with plan identifiers (e.g., `data-plan="pro"`)
   - Enterprise: contact link (email or form)
-- Do not invent final prices if not committed; placeholders are acceptable.
-- Plan features must align with real or committed roadmap:
-  - retention controls, team features, support tiers are acceptable to list if they’re planned; mark as “coming soon” if not implemented.
+- Prices may be shown if you want to commit; otherwise use placeholders.
 
-### 3.7 FAQ
-Minimum questions:
-- What can I connect today?
-- Do I need to code?
-- How do I trust AI routing?
-- What happens when something fails?
+Recommended feature shape (truth-guarded):
+- Free: limited executions + single environment + basic logs
+- Team: dev/staging/prod + more executions + baseline integrations
+- Business: higher volume + longer retention + audit exports (mark “planned” if not shipped)
+- Enterprise: SSO/RBAC/on-prem (mark “planned” if not shipped)
 
-Answers must be honest to current product state; avoid overpromising integrations and self-healing beyond MVP implementation.
+### 3.8 FAQ
+Minimum questions (DevOps-specific):
+- What is Agentromatic (and how is it different from CI/CD tools)?
+- Do I need to adopt a new UI, or can I keep Git/PR workflows?
+- How do rollbacks/retries work?
+- How do you handle audit trails and compliance needs?
+- What integrations are available today?
 
-### 3.8 Final CTA
+Answers must be honest: label roadmap vs shipped.
+
+### 3.9 Final CTA
 Re-state the “Start free” CTA with a crisp activation promise:
-- “Pick a template → send a test webhook → see the run logs.”
+- “Pick a template → run a staging deployment workflow → inspect the trace and logs.”
 
 ---
 
 ## 4) Messaging guardrails (truth constraints)
 
 ### 4.1 Allowed to claim now (spec-aligned)
-- Workflow automation platform with AI steps
-- Structured execution logs
-- Workflow snapshotting as a principle/feature (if present in the execution record contract)
-- Safe condition evaluation (ADR-0002) — can say “no eval” / “deterministic rules”
+- Workflow automation platform with structured executions/logs.
+- Workflow snapshotting per run (auditability/correctness).
+- Safe deterministic rule evaluation (ADR-0002: no `eval`).
+- Code-first workflows are a product direction (if implemented, claim as shipped; otherwise phrase as “building”).
 
-### 4.2 Avoid claiming until implemented
-- “Self-healing automatically fixes workflows” (unless actually shipped; MVP decision says auto-apply OFF)
-- “100+ integrations” (unless shipped)
-- “Conversational debugging” (unless shipped)
-- “Email triggers” (unless shipped)
-- “Webhook endpoints hosted + configurable auth” (only if shipped)
+### 4.2 Avoid claiming until implemented / verified
+- Hard SLA claims (e.g., “99.999% uptime guarantee”).
+- Numerical accuracy claims for AI (e.g., “90% failure prediction accuracy”).
+- “Self-healing automatically fixes everything” (MVP decision: auto-apply OFF).
+- Broad connector counts or “native integrations with everything”.
+- “On-prem available” unless actually delivered.
 
-### 4.3 Beta labeling
-If Slack/Mattermost/Discord notify are not fully shipped, label:
-- “Slack/Mattermost/Discord (beta)” or “chat notify (beta)”
-and keep copy from implying full parity with Zapier’s connector breadth.
+### 4.3 How to talk about Temporal / durability
+It’s OK to say “built on Temporal” only if it’s true in the codebase/deployment.
+If it’s not yet true, use: “Temporal-compatible direction” or “Temporal-style durable execution” and place it under “Roadmap”.
 
 ---
 
-## 5) Design notes (robotic/romantic theme)
-Brand vibe: “robotic reliability with romantic warmth.”
+## 5) Design notes (robotic/romantic theme, DevOps edition)
+Brand vibe: “robotic reliability with romantic warmth,” expressed through:
+- telemetry / mission-control motifs (run timeline, status dots, trace-like UI)
+- copy that is crisp and literal (no fluff in the hero)
+- subtle warmth in microcopy (“Automation with a heartbeat.”)
 
-Guidelines:
-- Keep hero copy literal; put theme into:
-  - microcopy (“Automation with a heartbeat.”)
-  - visuals (mission control timeline, status dots)
-  - subtle gradients and telemetry UI patterns
-
-Avoid humor or whimsy that obscures what the product is.
+Avoid “developer meme” humor. This page should feel credible to platform teams.
 
 ---
 
 ## 6) Analytics / conversion instrumentation (recommended)
-(Not required for MVP, but suggested.)
-
 Track:
 - CTA clicks: Start free (hero), Start free (pricing), Use template
-- Scroll depth to Templates and Pricing
-- Template tab selection (Slack vs Mattermost vs Discord)
+- Scroll depth to Use cases/Integrations/Pricing
+- Template selection (which use case resonates)
 - Sign-up completion rate (Clerk)
 
 Implementation note:
-- Put stable attributes on CTAs (e.g., `data-cta="start-free-hero"`, `data-plan="pro"`) to avoid fragile selector-based tracking.
+- Put stable attributes on CTAs (e.g., `data-cta="start-free-hero"`, `data-plan="pro"`).
 
 ---
 
 ## 7) Acceptance criteria (Definition of Done)
-- Signed-out users at `/` see the marketing homepage.
+- Signed-out users at `/` see the DevOps/platform marketing homepage.
 - Primary CTA “Start free” opens Clerk sign-up.
 - Secondary CTA “Sign in” opens Clerk sign-in.
-- Pricing section includes plan structure + stable plan identifiers for later Lemon Squeezy wiring.
-- Copy is consistent with the product/design specs and does not overpromise integrations or self-healing beyond MVP.
-- Production build does not show dev-only debug banners or internal environment diagnostics on the marketing homepage.
+- Page includes: Hero, Use cases/Templates, How it works, Integrations, Pricing, FAQ, Final CTA.
+- Pricing section includes stable plan identifiers for later Lemon Squeezy wiring.
+- Copy does not overpromise (no hard SLA/accuracy claims unless verified).
+- Production build does not expose dev-only debug banners or internal diagnostics on the marketing homepage.
 
 ---
 
 ## 8) Implementation notes (alignment to current web app)
-- Marketing homepage should be rendered only for signed-out users to preserve “hosted dashboard immediately” promise.
-- Keep the marketing homepage independent of backend queries to avoid requiring Convex data when signed out.
-- Avoid adding routing complexity in Phase 1; anchor links are acceptable.
-- Styling can be lightweight; do not block on Tailwind/shadcn if not already in use.
+- Marketing homepage should be rendered only for signed-out users to preserve “get into the product quickly” UX.
+- Keep the marketing homepage independent of backend queries when signed out.
+- Use anchors for navigation (no routing complexity required for v0.2).
+- Styling can remain lightweight (inline styles are acceptable for now).
 
 ---

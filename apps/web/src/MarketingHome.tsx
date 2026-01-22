@@ -4,9 +4,10 @@ import { SignInButton, SignUpButton } from "@clerk/clerk-react";
 /**
  * Marketing homepage for signed-out users.
  *
- * Positioning (current wedge):
- * - Zapier replacement angle
- * - Webhook → AI triage → route → notify (Slack / Mattermost / Discord)
+ * Positioning (updated vertical):
+ * - DevOps & Platform Engineering
+ * - Workflows-as-code + durable execution + audit-ready history
+ * - "Temporal for DevOps workflows" (application layer: templates, agents, SDLC integration)
  *
  * Notes:
  * - Pricing CTAs include `data-plan` attributes so you can later wire Lemon Squeezy
@@ -15,11 +16,6 @@ import { SignInButton, SignUpButton } from "@clerk/clerk-react";
  */
 
 type PlanKey = "free" | "pro" | "business" | "enterprise";
-
-function useNowIso(): string {
-  // Deterministic-enough timestamp for example payloads; recomputed only once per mount.
-  return useMemo(() => new Date().toISOString(), []);
-}
 
 function scrollToId(id: string): void {
   const el = document.getElementById(id);
@@ -239,7 +235,7 @@ function CodeBlock(props: {
         >
           <span>{props.title}</span>
           <span style={{ fontFamily: styles.mono.fontFamily, opacity: 0.85 }}>
-            webhook.example
+            workflow.ts
           </span>
         </div>
       ) : null}
@@ -369,89 +365,49 @@ function statusDotStyle(status: string): React.CSSProperties {
 }
 
 export default function MarketingHome(): React.ReactElement {
-  const nowIso = useNowIso();
-
   const [activeTemplate, setActiveTemplate] = useState<
-    "slack" | "mattermost" | "discord"
-  >("slack");
-
-  const webhookPayload = useMemo(() => {
-    // This is an intentionally-generic payload; teams can map their real webhook schema.
-    const base = {
-      id: "evt_9u3k2a",
-      receivedAt: nowIso,
-      source: "webhook",
-      request: {
-        path: "/webhook/inbound",
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-request-id": "req_18f2d",
-        },
-      },
-      customer: {
-        name: "A. Customer",
-        email: "acustomer@example.com",
-        plan: "pro",
-      },
-      message: {
-        subject: "Login is broken for multiple users",
-        body:
-          "We are seeing 500 errors in production. This started ~10 minutes ago. " +
-          "Can someone take a look ASAP?",
-      },
-      // What AI triage might extract (example):
-      triage: {
-        intent: "support",
-        category: "incident",
-        urgency: "high",
-        suggestedOwner: "oncall",
-        summary:
-          "Customer reports production login failures and 500 errors starting ~10 minutes ago.",
-      },
-    };
-
-    return JSON.stringify(base, null, 2);
-  }, [nowIso]);
+    "k8sDeploy" | "terraformPlan" | "incidentRollback"
+  >("k8sDeploy");
 
   const templateCopy = useMemo(() => {
     const common = {
-      title: "Webhook → AI triage → route → notify",
+      title: "Workflows as code → durable execution → audit-ready history",
       subtitle:
-        "Classify inbound requests, apply safe routing rules, and notify the right channel with context.",
-      routing:
-        "Example routing:\n" +
-        "- if triage.urgency == 'high' → #on-call\n" +
-        "- else if triage.category == 'billing' → #billing\n" +
-        "- else → #support",
+        "Define infrastructure workflows in code, run them durably, and ship with the observability and safety teams expect.",
+      gates:
+        "Example gates:\n" +
+        "- if policy.requireApprovals == true → request approval\n" +
+        "- if checks.smoke.passed == false → rollback\n" +
+        "- if security.cves.high > 0 → block deploy\n" +
+        "- else → proceed",
     };
 
-    if (activeTemplate === "mattermost") {
+    if (activeTemplate === "terraformPlan") {
       return {
         ...common,
-        destination: "Mattermost",
+        destination: "Terraform Plan → Apply",
         notifyLine:
-          "Post a richly formatted message to a Mattermost channel with urgency, summary, and a link back to the run logs.",
-        channelExamples: "#on-call, #support, #billing",
+          "Plan/apply with approvals, drift visibility, and a human-readable audit trail tied to the execution history.",
+        channelExamples: "dev / staging / prod",
       };
     }
 
-    if (activeTemplate === "discord") {
+    if (activeTemplate === "incidentRollback") {
       return {
         ...common,
-        destination: "Discord",
+        destination: "Incident Auto-Rollback",
         notifyLine:
-          "Send an embed-style notification to Discord with priority tags and a quick summary.",
-        channelExamples: "#triage, #mods, #support",
+          "Detect elevated error rates, roll back safely, and notify on-call with the exact evidence trail.",
+        channelExamples: "service=payments-api, env=prod",
       };
     }
 
     return {
       ...common,
-      destination: "Slack",
+      destination: "Kubernetes Deploy",
       notifyLine:
-        "Send a Slack message with extracted fields (intent/urgency/summary) and the raw webhook context when needed.",
-      channelExamples: "#on-call, #support, #billing",
+        "Roll out to Kubernetes with built-in verification steps and a rollback path when tests or SLOs fail.",
+      channelExamples: "service=payments-api, env=prod",
     };
   }, [activeTemplate]);
 
@@ -479,7 +435,15 @@ export default function MarketingHome(): React.ReactElement {
               type="button"
               onClick={() => scrollToId("templates")}
             >
-              Templates
+              Use cases
+            </button>
+
+            <button
+              style={styles.navLink}
+              type="button"
+              onClick={() => scrollToId("integrations")}
+            >
+              Integrations
             </button>
             <button
               style={styles.navLink}
@@ -524,19 +488,20 @@ export default function MarketingHome(): React.ReactElement {
           <div style={styles.hero}>
             <div style={styles.heroLeft}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                <Pill>Webhook-first</Pill>
-                <Pill>AI triage + rules</Pill>
-                <Pill>Slack • Mattermost • Discord (beta)</Pill>
+                <Pill>Workflows as code</Pill>
+                <Pill>Durable execution</Pill>
+                <Pill>Git • CI/CD • Kubernetes • Terraform</Pill>
               </div>
 
               <h1 style={styles.h1}>
-                AI webhook triage that routes to the right channel—fast.
+                Temporal-style reliability for DevOps workflows—built for
+                platform teams.
               </h1>
 
               <p style={styles.lede}>
-                Classify inbound webhooks, apply deterministic routing rules,
-                and notify Slack/Mattermost/Discord (beta)—with{" "}
-                <strong>logs for every run</strong>.
+                Orchestrate deployments, tests, rollbacks, and compliance checks
+                as code—then get{" "}
+                <strong>logs and an audit trail for every run</strong>.
               </p>
 
               <div style={styles.heroButtons}>
@@ -577,35 +542,35 @@ export default function MarketingHome(): React.ReactElement {
                   Mission Control (example run)
                 </div>
                 <div style={{ color: "#6b7280", fontSize: 12 }}>
-                  webhook → ai.triage → route → chat.notify
+                  git.push → plan → deploy → verify → rollback
                 </div>
               </div>
 
               <div style={styles.timeline}>
                 {[
                   {
-                    label: "webhook.receive",
-                    status: "success",
-                    meta: "200ms",
-                    detail: "Inbound event captured",
-                  },
-                  {
-                    label: "ai.triage",
-                    status: "success",
-                    meta: "1.9s",
-                    detail: "Extract intent/urgency/summary",
-                  },
-                  {
-                    label: "route.conditions",
-                    status: "success",
-                    meta: "12ms",
-                    detail: "Matched: urgency == high",
-                  },
-                  {
-                    label: "chat.notify",
+                    label: "git.event",
                     status: "success",
                     meta: "180ms",
-                    detail: `Posted to ${templateCopy.destination}`,
+                    detail: "Commit detected and linked to workflow run",
+                  },
+                  {
+                    label: "plan.policy",
+                    status: "success",
+                    meta: "420ms",
+                    detail: "Approvals + safety checks evaluated",
+                  },
+                  {
+                    label: "deploy.execute",
+                    status: "success",
+                    meta: "2.4s",
+                    detail: "Canary rollout started with retries enabled",
+                  },
+                  {
+                    label: "verify.notify",
+                    status: "success",
+                    meta: "220ms",
+                    detail: `Recorded history and notified: ${templateCopy.destination}`,
                   },
                 ].map((step) => (
                   <div key={step.label} style={styles.step}>
@@ -626,8 +591,42 @@ export default function MarketingHome(): React.ReactElement {
 
               <div style={{ marginTop: 12 }}>
                 <CodeBlock
-                  title="Example webhook payload"
-                  code={webhookPayload}
+                  title="Example workflow (TypeScript)"
+                  code={`// Pseudocode example (illustrative): workflows-as-code for DevOps
+import { workflow, agent } from "@agentromatic/sdk";
+
+export const deployToProd = workflow("deploy-to-prod", async (ctx) => {
+  // Deploy
+  const deployment = await agent("deploy", {
+    env: "production",
+    service: ctx.params.service,
+    sha: ctx.params.sha,
+    strategy: "canary",
+  });
+
+  // Verify
+  const smoke = await agent("smokeTest", { deploymentId: deployment.id });
+  if (!smoke.passed) {
+    // Rollback is first-class
+    await agent("rollback", {
+      deploymentId: deployment.id,
+      reason: smoke.errors,
+    });
+    throw new Error("Smoke tests failed — rolled back");
+  }
+
+  // Guardrails
+  await agent("securityCheck", { deploymentId: deployment.id });
+
+  // Notify + audit-ready context
+  await agent("notify", {
+    channel: "#platform-oncall",
+    summary: "Deploy succeeded",
+    deploymentId: deployment.id,
+  });
+
+  return { ok: true, deploymentId: deployment.id };
+});`}
                 />
               </div>
             </div>
@@ -636,24 +635,24 @@ export default function MarketingHome(): React.ReactElement {
           {/* WHAT YOU CAN BUILD */}
           <Section
             eyebrow="Outcome"
-            title="Inbound triage that actually stays reliable"
-            subtitle="The fastest path from raw webhook payloads to routed action in chat."
+            title="DevOps workflows that don’t break under pressure"
+            subtitle="Replace glue scripts and brittle CI steps with durable, observable execution."
           >
             <div style={styles.grid3}>
               <Card
                 icon="1"
-                title="Triage with AI"
-                description="Classify intent, extract structured fields, and summarize—so routing doesn’t rely on fragile string matching."
+                title="Plan with agents"
+                description="Turn messy inputs (commits, alerts, change tickets) into a clear execution plan with structured context."
               />
               <Card
                 icon="2"
-                title="Route with rules"
-                description="Use safe, deterministic conditions to choose paths based on extracted fields (priority, category, owner)."
+                title="Execute durably"
+                description="Run long-lived deploy and infra workflows with retries, checkpoints, and an immutable execution history."
               />
               <Card
                 icon="3"
-                title="Notify chat instantly"
-                description="Slack, Mattermost, or Discord notifications with the context your team needs to act immediately."
+                title="Audit + observe"
+                description="Every step is logged with inputs/outputs/errors so debugging and compliance stop being guesswork."
               />
             </div>
           </Section>
@@ -661,9 +660,9 @@ export default function MarketingHome(): React.ReactElement {
           {/* TEMPLATES */}
           <Section
             id="templates"
-            eyebrow="Templates"
-            title="Start from a proven webhook triage workflow"
-            subtitle="Pick a destination, start free, and run a test payload to see logs immediately. Chat connectors are in beta."
+            eyebrow="Use cases"
+            title="Start from a proven platform workflow"
+            subtitle="Pick a template, start free, and run a dry-run to see the full execution history. Integrations are rolling out with design partners."
           >
             <div
               style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}
@@ -671,9 +670,9 @@ export default function MarketingHome(): React.ReactElement {
               <div style={styles.templateTabs}>
                 {(
                   [
-                    { key: "slack", label: "Slack" },
-                    { key: "mattermost", label: "Mattermost" },
-                    { key: "discord", label: "Discord" },
+                    { key: "k8sDeploy", label: "Kubernetes deploy" },
+                    { key: "terraformPlan", label: "Terraform plan/apply" },
+                    { key: "incidentRollback", label: "Incident rollback" },
                   ] as const
                 ).map((t) => (
                   <button
@@ -756,9 +755,15 @@ export default function MarketingHome(): React.ReactElement {
                         lineHeight: 1.7,
                       }}
                     >
-                      <li>Receives a webhook payload</li>
-                      <li>AI extracts: intent, category, urgency, summary</li>
-                      <li>Routes based on safe conditions</li>
+                      <li>Ingests an SDLC/infra event (git, CI, alert)</li>
+                      <li>
+                        Agents extract and validate structured context (env,
+                        service, risk)
+                      </li>
+                      <li>
+                        Applies deterministic gates (approvals, checks,
+                        policies)
+                      </li>
                       <li>{templateCopy.notifyLine}</li>
                     </ul>
                   </div>
@@ -771,13 +776,13 @@ export default function MarketingHome(): React.ReactElement {
                         marginBottom: 6,
                       }}
                     >
-                      Example routing
+                      Example gates
                     </div>
-                    <div style={styles.miniPre}>{templateCopy.routing}</div>
+                    <div style={styles.miniPre}>{templateCopy.gates}</div>
                     <div
                       style={{ marginTop: 8, color: "#6b7280", fontSize: 12 }}
                     >
-                      Example channels:{" "}
+                      Example targets:{" "}
                       <span style={styles.mono}>
                         {templateCopy.channelExamples}
                       </span>
@@ -789,18 +794,18 @@ export default function MarketingHome(): React.ReactElement {
               <div style={styles.grid3}>
                 <Card
                   icon="⚡"
-                  title="Instant gratification"
-                  description="Start free, run a test payload, and land directly on the run logs."
+                  title="Fast to first run"
+                  description="Start free, run a dry-run, and land directly on the execution history."
                 />
                 <Card
                   icon="🧭"
-                  title="Predictable routing"
-                  description="Routing logic is explicit and deterministic. You always know why a path was chosen."
+                  title="Predictable gates"
+                  description="Approvals and safety checks are explicit and deterministic. You always know why a step ran (or didn’t)."
                 />
                 <Card
                   icon="🧾"
                   title="Audit trail by default"
-                  description="Every run leaves structured logs you can use to debug, improve, and trust automations."
+                  description="Every run leaves structured logs you can use to debug incidents, satisfy reviews, and iterate safely."
                 />
               </div>
             </div>
@@ -810,8 +815,8 @@ export default function MarketingHome(): React.ReactElement {
           <Section
             id="how"
             eyebrow="How it works"
-            title="From webhook to routed chat notification"
-            subtitle="Setup is simple: send a payload, triage it, route it, notify your team."
+            title="From commit or alert to a durable workflow run"
+            subtitle="Write a workflow once, run it reliably, and inspect every decision."
           >
             <div style={styles.grid2}>
               <div
@@ -819,25 +824,25 @@ export default function MarketingHome(): React.ReactElement {
               >
                 <Card
                   icon="①"
-                  title="Receive the webhook"
-                  description="Start with a webhook-style JSON payload from any system. Hosted webhook endpoints are rolling out—test runs instantly with sample data."
+                  title="Trigger from SDLC"
+                  description="Start from Git events, CI signals, or incident alerts. Use sample payloads for dry-runs while integrations are rolling out."
                 />
                 <Card
                   icon="②"
-                  title="Triage with AI"
-                  description="Extract structured fields (intent, urgency, category, summary) from the payload."
+                  title="Plan and verify"
+                  description="Agents produce structured context and proposed steps; deterministic gates decide what’s allowed to run."
                 />
                 <Card
                   icon="③"
-                  title="Route and notify"
-                  description="Apply safe rules to pick a path, then post to Slack/Mattermost/Discord with the right context."
+                  title="Execute and record"
+                  description="Deploy, test, roll back, and notify—with a durable history you can replay and audit."
                 />
               </div>
 
               <div>
                 <div style={styles.callout}>
                   <div style={{ fontWeight: 950, color: "#111827" }}>
-                    Why teams switch from Zapier/Make
+                    Why platform teams switch from ad-hoc scripts
                   </div>
                   <div
                     style={{
@@ -849,16 +854,16 @@ export default function MarketingHome(): React.ReactElement {
                   >
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                       <li>
-                        <strong>Inspectability:</strong> inputs → outputs →
-                        errors for every step.
+                        <strong>Durability:</strong> long-lived workflows don’t
+                        fall apart on retries, restarts, or flaky dependencies.
                       </li>
                       <li>
-                        <strong>Reproducibility:</strong> each run snapshots the
-                        workflow definition.
+                        <strong>Auditability:</strong> each run records what
+                        happened, with the workflow definition tied to the run.
                       </li>
                       <li>
-                        <strong>Safety:</strong> deterministic condition
-                        evaluation (no arbitrary code execution).
+                        <strong>Safety:</strong> deterministic gates and
+                        explicit approvals instead of hidden side effects.
                       </li>
                     </ul>
                   </div>
@@ -883,11 +888,66 @@ export default function MarketingHome(): React.ReactElement {
                       lineHeight: 1.6,
                     }}
                   >
-                    Start with a template, send one test webhook, and check the
-                    logs. That’s the fastest “aha.”
+                    Start with a template, run a dry-run, and inspect the
+                    execution history. That’s the fastest “aha.”
                   </div>
                 </div>
               </div>
+            </div>
+          </Section>
+
+          {/* INTEGRATIONS */}
+          <Section
+            id="integrations"
+            eyebrow="Integrations"
+            title="Go deep on the tools platform teams already run"
+            subtitle="We’re building a small set of first-class DevOps integrations (rolling out with design partners). Start validating workflow shapes now with templates + dry-runs."
+          >
+            <div style={styles.grid3}>
+              <Card
+                icon="⎇"
+                title="Git providers"
+                description="GitHub/GitLab events to trigger workflows, link runs to commits/PRs, and keep an audit trail."
+              />
+              <Card
+                icon="☸"
+                title="Kubernetes"
+                description="Deploy orchestration with verification steps, rollbacks, and run history you can replay."
+              />
+              <Card
+                icon="▦"
+                title="IaC + policy"
+                description="Terraform/Pulumi plan/apply flows with explicit gates (approvals, checks, policy) and drift-aware logs."
+              />
+              <Card
+                icon="📈"
+                title="Observability"
+                description="Datadog/Prometheus signals to verify deploys and trigger automated rollback workflows."
+              />
+              <Card
+                icon="🚨"
+                title="Incident response"
+                description="PagerDuty + chat notifications to keep on-call in the loop with the exact evidence trail."
+              />
+              <Card
+                icon="🔐"
+                title="Security checks"
+                description="Vulnerability and policy checks as first-class workflow steps (block, require approval, or proceed)."
+              />
+            </div>
+
+            <div
+              style={{
+                marginTop: 12,
+                color: "#6b7280",
+                fontSize: 12,
+                lineHeight: 1.6,
+              }}
+            >
+              <strong style={{ color: "#374151" }}>Note:</strong> If you need a
+              specific integration first (e.g., GitHub + Kubernetes), you can
+              still start from templates and model the workflow now—then wire
+              credentials/connectors as they ship.
             </div>
           </Section>
 
@@ -895,19 +955,19 @@ export default function MarketingHome(): React.ReactElement {
           <Section
             id="pricing"
             eyebrow="Pricing"
-            title="Pricing that scales with usage"
-            subtitle="Credit-based plans: start free and upgrade when it’s saving you real time."
+            title="Pricing for DevOps & platform teams"
+            subtitle="Credit-based plans: start free, then upgrade as you standardize deploy and infra workflows across environments."
           >
             <div style={styles.pricingGrid}>
               <PricingCard
                 plan="free"
                 title="Free"
-                tagline="Try triage automation"
+                tagline="Prototype durable workflows"
                 price="$0"
                 features={[
-                  "Webhook workflows",
+                  "Workflow templates + dry-runs",
                   "Runs & basic logs (short retention)",
-                  "Templates to get started",
+                  "Single environment",
                 ]}
                 cta={
                   <SignUpButton mode="modal">
@@ -916,19 +976,19 @@ export default function MarketingHome(): React.ReactElement {
                     </span>
                   </SignUpButton>
                 }
-                finePrint="Best for prototypes and getting to your first successful run."
+                finePrint="Best for proving value on one workflow before rolling out across a team."
               />
 
               <PricingCard
                 plan="pro"
-                title="Pro"
-                tagline="Ship triage workflows for a team"
-                price="$—"
+                title="Team"
+                tagline="Standardize deploy workflows"
+                price="$299/mo"
                 highlighted
                 features={[
-                  "More included credits / higher run limits",
+                  "10,000 workflow executions/month",
+                  "3 environments (dev/staging/prod)",
                   "Longer log retention",
-                  "Team workspace basics",
                   "Priority support",
                 ]}
                 cta={
@@ -947,7 +1007,7 @@ export default function MarketingHome(): React.ReactElement {
                       scrollToId("pricing");
                     }}
                   >
-                    Get Pro
+                    Get Team
                   </button>
                 }
                 finePrint="Wire this button to Lemon Squeezy later (plan=pro)."
@@ -956,11 +1016,12 @@ export default function MarketingHome(): React.ReactElement {
               <PricingCard
                 plan="business"
                 title="Business"
-                tagline="Higher volume + control"
-                price="$—"
+                tagline="Scale platform automation"
+                price="$999/mo"
                 features={[
-                  "Higher limits for ops-heavy teams",
-                  "Advanced retention controls",
+                  "100,000 workflow executions/month",
+                  "Unlimited environments",
+                  "SOC2-oriented audit trail features",
                   "Priority support",
                 ]}
                 cta={
@@ -982,12 +1043,13 @@ export default function MarketingHome(): React.ReactElement {
               <PricingCard
                 plan="enterprise"
                 title="Enterprise"
-                tagline="Security & compliance"
-                price="Custom"
+                tagline="Security, control, and support"
+                price="$2,500+/mo"
                 features={[
-                  "Custom limits and retention",
-                  "Security review support",
-                  "Contractual terms + dedicated support",
+                  "Unlimited executions (custom)",
+                  "SSO/RBAC + advanced audit controls",
+                  "On-prem / VPC options",
+                  "Dedicated support + SLA",
                 ]}
                 cta={
                   <a
@@ -1010,7 +1072,7 @@ export default function MarketingHome(): React.ReactElement {
                     Talk to sales
                   </a>
                 }
-                finePrint="We’ll align on security needs and rollout timeline."
+                finePrint="We’ll align on security needs, integrations, and rollout timeline."
               />
             </div>
 
@@ -1033,46 +1095,51 @@ export default function MarketingHome(): React.ReactElement {
             id="faq"
             eyebrow="FAQ"
             title="Questions, answered"
-            subtitle="If you’re replacing Zapier for triage + routing, these are the questions that matter."
+            subtitle="If you’re standardizing deploy and infra workflows, these are the questions that matter."
           >
             <div style={styles.grid2}>
               <div style={styles.faq}>
                 <div style={styles.faqQ}>What can I connect today?</div>
                 <div style={styles.faqA}>
-                  Webhook in, chat notify out (beta): <strong>Slack</strong>,{" "}
-                  <strong>Mattermost</strong>, and <strong>Discord</strong>. If
-                  you can send a webhook, you can automate triage and routing
-                  here.
+                  The focus is DevOps workflows: Git/CI events in, durable
+                  execution and audit history out. Integrations like{" "}
+                  <strong>GitHub</strong>, <strong>Kubernetes</strong>,{" "}
+                  <strong>Terraform</strong>, and{" "}
+                  <strong>PagerDuty/Slack</strong> are being built alongside
+                  design partners—use templates and dry-runs to validate your
+                  workflow shape now.
                 </div>
               </div>
 
               <div style={styles.faq}>
                 <div style={styles.faqQ}>Do I need to code?</div>
                 <div style={styles.faqA}>
-                  No for common templates. You can start with a template, send a
-                  test webhook, and adjust routing rules. Power users can
-                  customize payload mappings and workflow structure.
-                </div>
-              </div>
-
-              <div style={styles.faq}>
-                <div style={styles.faqQ}>How do I trust AI routing?</div>
-                <div style={styles.faqA}>
-                  AI produces structured fields
-                  (intent/urgency/category/summary), and routing is controlled
-                  by explicit conditions. Every run is logged so you can verify
-                  decisions and iterate safely.
+                  This is designed to be code-first (TypeScript workflows), but
+                  you can start from templates and iterate. The goal is to make
+                  workflows fit your SDLC: version control, reviews, and
+                  testing.
                 </div>
               </div>
 
               <div style={styles.faq}>
                 <div style={styles.faqQ}>
-                  What happens when something fails?
+                  How do I trust agents in production?
                 </div>
                 <div style={styles.faqA}>
-                  You can see exactly where it failed and what data it had at
-                  that step. The platform is designed around reproducible runs
-                  and detailed logs so failures are debuggable—not mysterious.
+                  Agents can propose plans and extract structured context, but
+                  execution is governed by explicit gates (approvals, checks,
+                  policies). Every step is logged with inputs/outputs/errors so
+                  you can verify decisions and tighten controls over time.
+                </div>
+              </div>
+
+              <div style={styles.faq}>
+                <div style={styles.faqQ}>What happens when a deploy fails?</div>
+                <div style={styles.faqA}>
+                  You can see exactly which step failed and what evidence it had
+                  (tests, checks, errors). Workflows are built around durable,
+                  reproducible runs so failures are debuggable—and rollback
+                  paths are first-class.
                 </div>
               </div>
             </div>
@@ -1082,7 +1149,7 @@ export default function MarketingHome(): React.ReactElement {
           <div style={styles.finalCta}>
             <div style={{ maxWidth: 760 }}>
               <div style={{ fontSize: 26, fontWeight: 950, color: "#111827" }}>
-                Start free and route your first webhook today.
+                Start free and run your first DevOps workflow today.
               </div>
               <div
                 style={{
@@ -1092,8 +1159,8 @@ export default function MarketingHome(): React.ReactElement {
                   lineHeight: 1.6,
                 }}
               >
-                Pick a template, send one test payload, and inspect the run
-                logs. That’s the fastest path from “idea” to “automation you
+                Pick a template, run a dry-run, and inspect the execution
+                history. That’s the fastest path from “idea” to “automation you
                 trust.”
               </div>
 
@@ -1139,7 +1206,7 @@ export default function MarketingHome(): React.ReactElement {
               <a href="https://ampersandboxdesign.com">[&]</a>
             </div>
             <div style={{ color: "#6b7280", fontSize: 12 }}>
-              Built for reliable automation in the AI era.
+              Built for platform teams shipping reliable systems.
             </div>
           </div>
         </footer>
