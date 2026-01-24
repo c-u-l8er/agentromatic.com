@@ -96,17 +96,24 @@
 - `id: string`
 - `workflowId: string`
 - `workflowVersion?: number` (snapshot version at run start)
-- `status: 'running' | 'succeeded' | 'failed' | 'canceled'`
+- `status: 'running' | 'success' | 'failed' | 'canceled'`
 - `triggerData: Record<string, unknown>`
 - `startedAt: timestamp`
 - `completedAt?: timestamp`
 - `success?: boolean`
 - `error?: { message: string; code?: string; details?: unknown }`
-- `log: Array<ExecutionLogEntry>`
+
+**Log storage (normative v1 decision)**
+- Execution logs MUST be stored as separate records (one per node event) rather than an embedded `log[]` array on the execution.
+- Rationale: payload size control, pagination, retention, and cost management.
 
 #### 4.1.3 ExecutionLogEntry
+Execution log entries are persisted as **separate rows/records** keyed by `executionId` (and `nodeId`), and queried by `executionId` in chronological order.
+
+Fields:
+- `executionId: string`
 - `nodeId: string`
-- `status: 'started' | 'succeeded' | 'failed' | 'skipped' | 'retried'`
+- `status: 'started' | 'success' | 'failed' | 'skipped' | 'retried'`
 - `attempt?: number`
 - `input?: unknown` (redacted)
 - `output?: unknown` (redacted)
@@ -216,7 +223,7 @@ Given the spec mentions an `executionOrder`, implement topological sort for dete
    - Determine if node should run (based on incoming edge conditions / prior failures).
    - Log `started`.
    - Execute node with retry policy (per node type).
-   - On success: store output to `currentData.nodes[nodeId]` and log `succeeded`.
+   - On success: store output to `currentData.nodes[nodeId]` and log `success`.
    - On failure: log `failed` and stop execution (MVP). (Post-MVP: partial continuation or error branches.)
 
 ### 6.3 Failure handling policy

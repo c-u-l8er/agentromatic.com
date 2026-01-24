@@ -203,16 +203,22 @@ export const executeWorkflow = action({
   handler: async (ctx, args) => {
     const workflow = await ctx.runQuery(api.workflows.get, { id: args.workflowId });
     
-    // Create execution record
+    // Create execution record (MVP: snapshot workflow for auditability and reproducible re-runs)
     const executionId = await ctx.runMutation(api.executions.create, {
       workflowId: args.workflowId,
       status: 'running',
-      startedAt: Date.now()
+      startedAt: Date.now(),
+      workflowSnapshot: workflow
     });
     
     try {
-      let currentData = args.triggerData;
-      const executionLog = [];
+      // Accumulate outputs instead of overwriting previous results
+      // Shape is designed for deterministic field references in later nodes.
+      let currentData = {
+        trigger: args.triggerData,
+        nodes: {},
+        meta: { workflowId: args.workflowId, executionId }
+      };
       
       // Execute nodes in order (topological sort of DAG)
       const executionOrder = topologicalSort(workflow.nodes, workflow.edges);
@@ -234,32 +240,38 @@ export const executeWorkflow = action({
           // ... other node types
         }
         
-        executionLog.push({
-          nodeId: node.id,
-          status: 'success',
-          input: currentData,
-          output: result,
-          duration: Date.now() - startTime
+        // Persist log entries as separate records (preferred) rather than embedding a full log array on Execution.
+        // This enables pagination, retention, and payload truncation.
+        await ctx.runMutation(api.executionLogs.append, {
+          executionId,
+          entry: {
+            nodeId: node.id,
+            status: 'success',
+            input: currentData, // NOTE: should be redacted + size-bounded in real implementation
+            output: result,     // NOTE: should be redacted + size-bounded in real implementation
+            duration: Date.now() - startTime,
+            timestamp: Date.now()
+          }
         });
         
-        currentData = result; // Pass output to next node
+        // Store node output without discarding prior outputs
+        currentData.nodes[node.id] = result;
       }
       
-      // Mark execution as complete
+      // Mark execution as complete (logs already persisted as separate entries)
       await ctx.runMutation(api.executions.complete, {
         id: executionId,
         status: 'success',
-        log: executionLog,
         completedAt: Date.now()
       });
       
       return { success: true, executionId };
     } catch (error) {
-      // Handle errors
+      // Handle errors (ensure error details are safe/redacted in real implementation)
       await ctx.runMutation(api.executions.complete, {
         id: executionId,
         status: 'failed',
-        error: error.message,
+        error: { message: error.message },
         completedAt: Date.now()
       });
       
