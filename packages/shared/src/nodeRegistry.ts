@@ -45,6 +45,7 @@ export const NodeTypeSchema = z.enum([
   // Actions
   "http_request",
   "ai_agent",
+  "whs_agent",
   "log_message",
 
   // Controls (placeholder for later)
@@ -165,6 +166,56 @@ export const AiAgentConfigSchema = z.object({
 });
 export type AiAgentConfig = z.infer<typeof AiAgentConfigSchema>;
 
+/**
+ * WebHost.Systems agent invocation node config.
+ *
+ * Intent:
+ * - This node represents invoking a WHS Agent (WHS control plane + runtime deployments).
+ * - Execution is performed server-side by Agentromatic's workflow runner (NOT in this shared package).
+ *
+ * Notes:
+ * - Keep this environment-agnostic: config is declarative only.
+ * - This is designed to map cleanly to WHS `invoke/v1` (and later delegated invocation).
+ */
+export const WhsAgentConfigSchema = z.object({
+  /**
+   * Target WHS agent id to invoke (WHS control plane agent id).
+   * Example format: "agt_..." (exact prefix is WHS-implementation-defined).
+   */
+  whsAgentId: NonEmptyStringSchema.max(200),
+
+  /**
+   * Invocation input payload (kept intentionally flexible for MVP).
+   * The workflow runner will translate this into WHS `invoke/v1`:
+   * - `prompt` OR `messages` (recommended: messages)
+   */
+  input: z
+    .object({
+      prompt: z.string().max(20_000).optional(),
+      messages: JsonValueSchema.optional(),
+    })
+    .default({}),
+
+  /**
+   * Optional session id for stateful WHS runtimes.
+   * Treated as an opaque string (do not parse).
+   */
+  sessionId: z.string().max(500).optional(),
+
+  /**
+   * Optional model hint; the workflow runner may map this to runtime/provider settings.
+   * Keep as string for portability.
+   */
+  model: z.string().max(128).optional(),
+
+  /**
+   * Optional generation controls (runner may enforce bounds).
+   */
+  temperature: z.number().min(0).max(2).optional(),
+  maxSteps: z.number().int().min(1).max(50).optional(),
+});
+export type WhsAgentConfig = z.infer<typeof WhsAgentConfigSchema>;
+
 export const LogMessageConfigSchema = z.object({
   message: NonEmptyStringSchema.max(10_000),
   /**
@@ -257,6 +308,56 @@ export const nodeRegistry: Record<NodeType, NodeDefinition<any>> = {
       toolsEnabled: false,
     },
     isMvpReady: false, // engine not implemented yet
+  },
+
+  whs_agent: {
+    type: "whs_agent",
+    kind: "action",
+    title: "WHS Agent",
+    description:
+      "Invoke a WebHost.Systems agent (maps to WHS invoke/v1; execution handled by the workflow runner).",
+    icon: "sparkles",
+    inputs: [
+      {
+        key: "currentData",
+        label: "currentData",
+        description:
+          "The workflow's current data object (runner may use it to build prompt/messages).",
+      },
+    ],
+    outputs: [
+      {
+        key: "text",
+        label: "text",
+        description: "Primary text output from the WHS agent.",
+      },
+      {
+        key: "traceId",
+        label: "traceId",
+        description: "WHS trace id for correlation and debugging.",
+      },
+      {
+        key: "sessionId",
+        label: "sessionId",
+        description: "Opaque session id (if provided by the runtime).",
+      },
+    ],
+    configSchema: WhsAgentConfigSchema,
+    defaultConfig: {
+      whsAgentId: "agt_placeholder",
+      input: {
+        messages: [
+          { role: "system", content: "You are a helpful assistant." },
+          {
+            role: "user",
+            content: "Summarize the following data:\n\n{{currentData}}",
+          },
+        ],
+      },
+      maxSteps: 10,
+      temperature: 0.2,
+    },
+    isMvpReady: false, // WHS integration lands in the next phase (runner + credentials + delegated invoke)
   },
 
   log_message: {
