@@ -788,7 +788,9 @@ end
 
 ---
 
-## 10. Delegatic Integration
+## 10. Delegatic & Deliberatic Integration
+
+### 10.1 Delegatic (Governance)
 
 ```elixir
 defmodule AgenTroMatic.PolicyCheck do
@@ -812,6 +814,72 @@ defmodule AgenTroMatic.PolicyCheck do
 end
 ```
 
+### 10.2 Deliberatic (Decision Protocol)
+
+Deliberatic is the formal argumentation and consensus protocol that powers AgenTroMatic's deliberation engine. Where AgenTroMatic is the automation runtime (bidding, overlap detection, reputation), Deliberatic provides the decision science underneath — formal semantics, Byzantine fault tolerance, constitutional guardrails, and Merkle-chained evidence chains.
+
+```elixir
+defmodule AgenTroMatic.Deliberatic do
+  @moduledoc """
+  Bridge to the Deliberatic argumentation protocol.
+  AgenTroMatic delegates all structured decision-making to Deliberatic's DAF engine.
+  """
+
+  alias Deliberatic.{DAF, Constitution, EvidenceChain, Consensus}
+
+  @doc "Opens a Deliberatic round when overlap is detected between competing bids."
+  def open_round(overlapping_bids, constitution_path) do
+    with {:ok, constitution} <- Constitution.load(constitution_path),
+         positions <- Enum.map(overlapping_bids, &bid_to_position/1),
+         {:ok, round} <- DAF.open(positions, constitution) do
+      {:ok, round}
+    end
+  end
+
+  @doc "Submits an agent's argument with typed evidence into the DAF."
+  def submit_argument(round_id, agent_id, argument, evidence) do
+    DAF.submit_position(round_id, %{
+      author: agent_id,
+      argument: argument,
+      evidence: evidence,
+      reputation: AgenTroMatic.ReputationEngine.score(agent_id, :general)
+    })
+  end
+
+  @doc "Triggers graded semantics resolution and returns the verdict."
+  def resolve(round_id) do
+    with {:ok, verdict} <- Consensus.resolve(round_id),
+         {:ok, chain} <- EvidenceChain.finalize(round_id) do
+      {:ok, %{verdict: verdict, evidence_chain: chain, merkle_root: chain.root}}
+    end
+  end
+
+  defp bid_to_position(bid) do
+    %Deliberatic.Position{
+      author: bid.agent_id,
+      claim: bid.claimed_subtasks,
+      evidence: [
+        %{type: :performance, value: bid.confidence, confidence: 0.1},
+        %{type: :historical, value: bid.reputation_score, confidence: 0.05}
+      ],
+      weight: bid.confidence * bid.reputation_score
+    }
+  end
+end
+```
+
+**Key integration points:**
+
+| Deliberatic Concept | AgenTroMatic Usage |
+|--------------------|--------------------|
+| DAF (Argumentation Framework) | Structures the negotiation phase — competing bids become formal positions with attack/support relations |
+| Graded Semantics (σ) | Computes acceptability scores that drive leader election |
+| Constitution DSL | Hard boundaries from Delegatic policies + soft preferences from cluster config |
+| Evidence Chains | Every deliberation produces a Merkle-chained audit log for compliance |
+| Two-Phase Consensus | Fast path (Raft) for clear winners, conflict path (PBFT) for close calls |
+| Reputation (ρ) | Deliberatic's ELO-derived reputation feeds back into AgenTroMatic's ReputationEngine |
+| Vindicated Dissent | Agents who correctly dissented get 1.5× reputation bonus — prevents groupthink |
+
 ---
 
 ## 11. Portfolio Integration
@@ -829,7 +897,10 @@ FLEETPROMPT (skills — Elixir/OTP)
   │  distributes skills to...
   ▼
 AGENTROMATIC ← (automation — Elixir/OTP + Ra)
-  │  self-organizes agents within boundaries from...
+  │  self-organizes agents using decisions from...
+  ▼
+DELIBERATIC (decisions — Elixir/OTP + DAF)
+  │  formal argumentation, consensus, evidence chains for...
   ▼
 DELEGATIC (governance — Elixir/OTP)
   │  enforces policies checked by...
@@ -852,7 +923,8 @@ All Elixir. One BEAM. Shared PubSub. Shared Ecto Repo. Shared Telemetry. Shared 
 | SpecPrompt → AgenTroMatic | Agents reference specs during bidding. Bids validated against capability contracts. |
 | Agentelic → AgenTroMatic | Telespace events trigger deliberations via PubSub. |
 | FleetPrompt → AgenTroMatic | Cluster queries FleetPrompt for available capabilities. |
-| AgenTroMatic → Delegatic | `PolicyCheck.authorize/2` before every execution. |
+| AgenTroMatic → Deliberatic | `Deliberatic.open_round/2` when overlaps detected. Graded semantics drive leader election. Evidence chains logged. |
+| AgenTroMatic → Delegatic | `PolicyCheck.authorize/2` before every execution. Delegatic policies feed Deliberatic constitutions. |
 | AgenTroMatic → Graphonomous | Deliberation outcomes feed continual learning engine. |
 | AgenTroMatic → WHS | Agent invocations dispatched to WHS runtime. |
 
@@ -894,9 +966,11 @@ All Elixir. One BEAM. Shared PubSub. Shared Ecto Repo. Shared Telemetry. Shared 
 - [ ] Quorum policy templates
 
 ### Phase 3: Enterprise (Q4 2026)
-- [ ] Delegatic policy integration
+- [ ] Deliberatic protocol integration (DAF engine, graded semantics, evidence chains)
+- [ ] Deliberatic Constitution DSL for cluster governance
+- [ ] Delegatic policy integration (feeds Deliberatic constitutions)
 - [ ] HITL escalation via Oban jobs
-- [ ] SOC 2 audit trace exports
+- [ ] SOC 2 audit trace exports (Merkle-chained evidence from Deliberatic)
 - [ ] Industry quorum templates
 
 ### Phase 4: Intelligence (2027)
@@ -933,11 +1007,12 @@ All Elixir. One BEAM. Shared PubSub. Shared Ecto Repo. Shared Telemetry. Shared 
 ## 16. Why This Wins
 
 1. **Right abstraction.** Static routing is wrong for overlapping, evolving capabilities. Deliberation is how teams work.
-2. **The demo is a moat.** Watching agents deliberate in the LiveView Observatory is inherently compelling. Viral content that converts.
-3. **Reputation compounds.** Longer runtime → better routing. Switching costs increase. Reputation data is irreplaceable.
-4. **A2A is the trojan horse.** Native A2A → inherit 150+ org ecosystem. Every team hitting the "routing wall" finds AgenTroMatic.
-5. **Observability sells governance.** Deliberation trace = audit trail. One feature, two markets.
-6. **BEAM advantage.** Process-per-deliberation, Ra for consensus, LiveView for Observatory, PubSub for real-time — all native. Zero glue code.
+2. **Deliberatic is the science.** Formal argumentation semantics (Dung/Potyka), Byzantine fault tolerance, and constitutional guardrails give AgenTroMatic academic rigor and enterprise trust that no competitor has.
+3. **The demo is a moat.** Watching agents deliberate in the LiveView Observatory is inherently compelling. Viral content that converts.
+4. **Reputation compounds.** Longer runtime → better routing. Switching costs increase. Reputation data is irreplaceable.
+5. **A2A is the trojan horse.** Native A2A → inherit 150+ org ecosystem. Every team hitting the "routing wall" finds AgenTroMatic.
+6. **Observability sells governance.** Deliberatic evidence chains = Merkle-chained audit trails. One feature, two markets.
+7. **BEAM advantage.** Process-per-deliberation, Ra for consensus, LiveView for Observatory, PubSub for real-time — all native. Zero glue code.
 
 ---
 
