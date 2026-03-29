@@ -948,7 +948,60 @@ All Elixir. One BEAM. Shared PubSub. Shared Ecto Repo. Shared Telemetry. Shared 
 
 ---
 
-## 13. Roadmap
+## 13. Acceptance Test Criteria
+
+Acceptance tests derived from spec invariants. Each maps to a verifiable assertion:
+
+**Deliberation Protocol:**
+- Given a task with 3 bidding agents → all 3 bids are collected within `bid_timeout_ms`; late bids are rejected
+- Given overlapping capabilities in 2+ bids → overlap_analysis phase detects and reports overlapping subtasks
+- Given a negotiation round → agents exchange positions; round completes within `negotiation_timeout_ms`
+- Given a Ra quorum with 3 nodes → commit succeeds with 2/3 agreement; fails with 1/3
+- Given a successful consensus_commit → reputation scores update for all participants within 1s
+- Given a deliberation timeout at any phase → GenStateMachine transitions to `:failed` with phase-specific error
+
+**Reputation System:**
+- Given an agent with 10 successful outcomes → reputation score increases monotonically per domain
+- Given an agent with calibration Brier score > 0.3 → confidence-adjusted reputation is discounted
+- Given an ETS reputation lookup → response time < 5μs p99
+- Given a reputation decay cycle (Oban job) → stale scores decrease by configured decay factor
+
+**A2A Integration:**
+- Given an A2A bid message → A2AGateway parses, validates, and routes to the correct deliberation GenServer
+- Given an invalid A2A message → returns structured error (not crash); deliberation continues with remaining agents
+
+**Observatory:**
+- Given an active deliberation → LiveView renders phase transitions within 50ms of PubSub broadcast
+- Given a completed deliberation → full trace (all phases, timings, bids, votes) is persisted via Broadway
+
+### 13.1 `&govern` Integration
+
+AgenTroMatic integrates with the `&govern` primitive:
+
+**`&govern.telemetry` — Deliberation Telemetry:**
+Every deliberation emits structured telemetry events via `&govern.telemetry.emit`:
+- `deliberation.started` — task_id, participating agents, quorum policy
+- `deliberation.phase_changed` — phase name, duration, agent count
+- `deliberation.completed` — outcome, winner, consensus type, total duration
+- `deliberation.failed` — failure reason, phase at failure
+
+These events enable Delegatic `budget_check` enforcement — deliberation token/compute costs are tracked per org.
+
+**`&govern.escalation` — HITL Escalation:**
+When a deliberation reaches an impasse (no quorum after max rounds) or when the task's confidence falls below `escalate_when.confidence_below`, AgenTroMatic escalates via `&govern.escalation.escalate`:
+- `trigger`: `confidence_below` or `no_quorum`
+- `proposed_action`: the highest-ranked bid's action plan
+- `context`: full deliberation trace for human review
+
+**`&govern.identity` — Agent Verification in Deliberation:**
+Before accepting bids, the deliberation coordinator verifies each agent's identity via `&govern.identity.verify`:
+- Manifest hash matches registered identity
+- Agent's declared capabilities include the required subtask capabilities
+- Prevents impersonation attacks (OS-007 threat: agent impersonation)
+
+---
+
+## 14. Roadmap
 
 ### Phase 1: MVP — The Deliberation Engine (Q2 2026)
 - [ ] GenStateMachine deliberation loop
@@ -981,7 +1034,7 @@ All Elixir. One BEAM. Shared PubSub. Shared Ecto Repo. Shared Telemetry. Shared 
 
 ---
 
-## 14. Pricing
+## 15. Pricing
 
 | Plan | Price | Agents | Deliberations/mo | Features |
 |------|-------|--------|-------------------|----------|
@@ -992,7 +1045,7 @@ All Elixir. One BEAM. Shared PubSub. Shared Ecto Repo. Shared Telemetry. Shared 
 
 ---
 
-## 15. Success Metrics
+## 16. Success Metrics
 
 | Metric | Target |
 |--------|--------|
@@ -1004,7 +1057,7 @@ All Elixir. One BEAM. Shared PubSub. Shared Ecto Repo. Shared Telemetry. Shared 
 
 ---
 
-## 16. Why This Wins
+## 17. Why This Wins
 
 1. **Right abstraction.** Static routing is wrong for overlapping, evolving capabilities. Deliberation is how teams work.
 2. **Deliberatic is the science.** Formal argumentation semantics (Dung/Potyka), Byzantine fault tolerance, and constitutional guardrails give AgenTroMatic academic rigor and enterprise trust that no competitor has.
