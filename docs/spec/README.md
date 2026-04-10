@@ -930,6 +930,52 @@ All Elixir. One BEAM. Shared PubSub. Shared Ecto Repo. Shared Telemetry. Shared 
 
 ---
 
+## 11.1 PULSE Loop Manifest
+
+AgenTroMatic is a **PULSE-conforming loop** under OS-010. Its temporal topology is declared in [`/PULSE/manifests/agentromatic.deliberation.json`](../../../PULSE/manifests/agentromatic.deliberation.json) against schema `pulse-loop-manifest.v0.1.json`.
+
+**Loop ID:** `agentromatic.deliberation`
+**Loop name:** AgenTroMatic Deliberation Loop
+**Version:** 0.2.0
+**Owner:** agentromatic.com
+**Workspace scope:** required
+
+**Phases (7 — uses canonical `act` and `learn`, plus four custom kinds for the deliberation-specific protocol):**
+
+| Phase ID | Kind | Description |
+|---|---|---|
+| `bid` | `custom: bid` | Capability-based bidding from agent registry |
+| `overlap` | `custom: overlap` | Detect overlapping bids requiring deliberation |
+| `negotiate` | `custom: negotiate` | Structured argumentation across overlapping bidders |
+| `elect` | `custom: elect` | Ra (Raft) consensus to elect leader; PBFT on conflict; enforces `quorum_before_commit` |
+| `execute` | `act` | Elected leader executes under quorum validation; `delegatic.check_policy` runs first |
+| `commit` | `act` | Commit outcome envelope to shared graph (audit event `task.committed`) |
+| `learn_rep` | `learn` | Update reputation across participants from outcome (`feedback_immutability`) |
+
+**Closure:** `learn_rep → bid` via `substrate:memory`, guarantee `eventual`.
+
+**Cadence:** `event` (trigger `task_arrival`).
+
+**Nesting:** root loop (no parent); inner loops are bidder-side reasoning sessions exposed via `cross_loop_signal` rather than declared inline.
+
+**Substrates:**
+- `memory`: `graphonomous://workspace/{ws_id}` (canonical PULSE memory substrate)
+- `policy`: `delegatic://workspace/{ws_id}`
+- `audit`: `delegatic://workspace/{ws_id}/audit`
+- `auth`: `open_sentience://workspace/{ws_id}`
+- `transport`: `a2a` (Google A2A protocol)
+- `time`: optional
+
+**Invariants enabled:** all seven (`phase_atomicity`, `feedback_immutability`, `append_only_audit`, `quorum_before_commit`, `outcome_grounding`, `trace_id_propagation`); `kappa_routing` is not used by this loop (deliberation is consensus-driven, not topology-driven).
+
+**Cross-loop connections:**
+- `rep_to_fleetprompt` — emits `ReputationUpdate` from `learn_rep` to `fleetprompt.trust.trust_recompute` (CloudEvents v1, async, at-least-once)
+- `outcome_to_prism` — emits `OutcomeSignal` from `commit` to `prism.benchmark.observe` (CloudEvents v1, async, at-least-once)
+
+**Why this matters:** AgenTroMatic's loop is structurally different from Graphonomous's (7 phases, four custom kinds, consensus-required) but PULSE accommodates both under one schema. PRISM can benchmark either without code changes — it reads the manifest, finds the `learn` phase, and listens for `OutcomeSignal`.
+
+---
+
 ## 12. Tech Stack
 
 | Layer | Technology | Rationale |
