@@ -2,6 +2,8 @@
 
 > **Your agents don't need a boss. They need a deliberation.**
 
+> **Part of the [&] Protocol stack** · [Ecosystem overview](../../ECOSYSTEM.md) · [Three-protocol stack](../../PULSE/docs/THREE_PROTOCOL_STACK.md) · [Stack status](../../STACK_COMPLETION.md)
+
 Welcome to the documentation hub for **AgenTroMatic** — the automatic deliberation
 engine for multi-agent AI systems. When a task arrives, agents bid based on ability,
 debate when capabilities overlap, elect leaders by consensus, execute under quorum
